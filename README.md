@@ -1,10 +1,10 @@
 # Mockup Project Health
 
-Dashboard Risiko Kesehatan Proyek Soda Ash PKT.
+Dashboard Risiko Kesehatan Proyek Soda Ash Perusahaan X (Mockup Only).
 
 ## Tautan Akses
 
 Mockup HTML ini dapat diakses secara publik melalui link berikut:
-[https://ipanjez.github.io/mockup-projecthealth/Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.html](https://ipanjez.github.io/mockup-projecthealth/Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.html)
+[https://ipanjez.github.io/mockup-projecthealth/](https://ipanjez.github.io/mockup-projecthealth/)
 
-> Catatan: GitHub Pages mungkin memerlukan waktu beberapa menit untuk aktif pertama kali setelah proses push.
+> Catatan: GitHub Pages mungkin memerlukan waktu beberapa menit untuk aktif. Jika halaman belum berubah, coba refresh atau bersihkan cache browser Anda.
