@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<!-- saved from url=(0149)file:///C:/Users/Farhans-WINDOWS/OneDrive%20-%20PKT/Manajemen%20Risiko%20Korporasi/PROJECT/Proyek/Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.html -->
+<html lang="id"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>Project Risk &amp; Health Dashboard — Soda Ash Project PT Pupuk Kaltim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#EEF1F6;
+  --stage-bg:#FFFFFF;
+  --panel-bg:#FFFFFF;
+  --panel-border:#E1E7F0;
+  --cell-bg:#F6F8FB;
+  --cell-border:#E7EBF2;
+  --navy:#0B1F3A;
+  --navy-soft:#1B3A63;
+  --orange:#FF6A13;
+  --orange-soft:#FFF0E2;
+  --text-hi:#0B1F3A;
+  --text-mid:#51607A;
+  --text-dim:#8B96AA;
+  --green:#2E9B57;
+  --green-soft:#E4F5EA;
+  --lgreen:#8DC26F;
+  --yellow:#E8B93A;
+  --yellow-soft:#FCF3DA;
+  --amber:#E4622E;
+  --amber-soft:#FDE9E0;
+  --red:#C0392B;
+  --red-soft:#FBE4E1;
+  --radius:14px;
+  --shadow: 0 20px 45px -25px rgba(11,31,58,.25);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);}
+body{
+  font-family:'IBM Plex Sans',sans-serif;
+  color:var(--text-hi);
+  -webkit-font-smoothing:antialiased;
+  padding:22px 16px 60px;
+}
+.eyebrow{font-family:'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;font-size:10.5px;color:var(--text-dim);}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;}
+
+/* ============ TOOLBAR ============ */
+.toolbar{max-width:1500px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.toolbar .ttl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.03em;padding:8px 14px;border-radius:9px;border:1px solid var(--panel-border);background:#fff;color:var(--navy-soft);cursor:pointer;transition:.15s;box-shadow:0 1px 3px rgba(11,31,58,.06);}
+.btn:hover{border-color:var(--orange);color:var(--orange);}
+.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+.btn.primary:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
+.btn.upload{background:var(--orange-soft);border-color:#FFD9B8;color:var(--orange);}
+.btn.upload:hover{background:var(--orange);color:#fff;}
+#importStatus{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--green);margin-left:6px;}
+
+/* ============ STAGE (16:9 board slide) ============ */
+.stage{
+  max-width:1500px;margin:0 auto;
+  aspect-ratio:16/9;
+  background:var(--stage-bg);
+  border:1px solid var(--panel-border);
+  border-radius:20px;
+  padding:20px 24px 14px;
+  display:flex;flex-direction:column;gap:10px;
+  box-shadow:var(--shadow);
+  position:relative;overflow:hidden;
+}
+.titlebar{display:flex;align-items:flex-end;justify-content:space-between;}
+.titlebar h1{font-size:20px;color:var(--navy);font-weight:700;}
+.titlebar .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--orange);margin-top:4px;font-weight:600;}
+.status-pill{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:5px 12px;border-radius:20px;border:1.4px solid var(--orange);color:var(--orange);letter-spacing:.08em;font-weight:600;}
+
+.main-grid{flex:1;display:grid;grid-template-columns:1.12fr 1fr;gap:12px;min-height:0;}
+.panel{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:var(--radius);padding:11px;display:grid;gap:9px;min-height:0;}
+.panel-a{grid-template-rows:1fr 1fr;grid-template-columns:1fr 1.05fr;grid-template-areas:"phs sub" "fin curve";}
+.panel-b{grid-template-rows:1fr 1fr;grid-template-columns:.82fr 1.18fr;grid-template-areas:"lvl heat" "cnt mit";}
+.cell{background:var(--cell-bg);border:1px solid var(--cell-border);border-radius:10px;padding:9px 11px;min-height:0;display:flex;flex-direction:column;}
+.cell-title{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px;}
+
+.c-phs{grid-area:phs;align-items:center;justify-content:center;text-align:center;}
+.c-sub{grid-area:sub;justify-content:center;gap:8px;}
+.c-fin{grid-area:fin;justify-content:center;gap:6px;}
+.c-curve{grid-area:curve;justify-content:center;gap:6px;}
+.c-lvl{grid-area:lvl;align-items:center;justify-content:center;text-align:center;}
+.c-heat{grid-area:heat;}
+.c-cnt{grid-area:cnt;justify-content:center;gap:5px;}
+.c-mit{grid-area:mit;justify-content:center;gap:6px;}
+
+.gauge-wrap{position:relative;width:150px;height:96px;margin:0 auto;}
+.gauge-num{font-size:29px;font-weight:700;color:var(--navy);line-height:1;}
+.gauge-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-dim);margin-top:2px;letter-spacing:.05em;}
+.rag-chip{display:inline-block;margin-top:7px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;padding:4px 11px;border-radius:20px;letter-spacing:.04em;}
+
+.kv{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.kv .k{font-size:10.3px;color:var(--text-mid);}
+.kv .v{font-size:14.5px;font-weight:700;color:var(--navy);}
+.bar-row{display:flex;flex-direction:column;gap:2px;}
+.bar-track{height:7px;background:#E7ECF3;border-radius:5px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:5px;}
+
+.heatmap{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:2px;flex:1;}
+.hcell{border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:800;color:#0C2038;}
+.heat-axes{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:7.5px;color:var(--text-dim);margin-top:3px;}
+
+.panel-c{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:var(--radius);padding:10px 11px;display:flex;flex-direction:column;gap:6px;}
+.ews-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.ews-chip{background:var(--cell-bg);border:1px solid var(--cell-border);border-radius:9px;padding:7px 9px;border-left:4px solid var(--red);}
+.ews-chip .p{font-size:9.3px;color:var(--text-mid);line-height:1.25;}
+.ews-chip .a{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--navy);margin-top:2px;}
+.ews-chip .t{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--text-dim);}
+.ews-chip .stlabel{display:inline-block;margin-top:3px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;padding:1.5px 7px;border-radius:9px;letter-spacing:.04em;color:#fff;}
+.ews-3col{text-align:center;}
+.ews-3col .dot{display:inline-block;width:15px;height:15px;border-radius:4px;}
+
+.panel-d{background:var(--orange-soft);border:1px solid #FFD9B8;border-radius:var(--radius);padding:8px 14px;display:flex;align-items:center;gap:14px;}
+.panel-d .lbl{font-family:'IBM Plex Mono',monospace;font-size:9.3px;color:var(--orange);letter-spacing:.08em;white-space:nowrap;font-weight:700;}
+.panel-d .txt{font-size:11.3px;color:var(--navy);line-height:1.3;}
+.panel-d .txt b{color:var(--orange);}
+
+.detail{max-width:1500px;margin:26px auto 0;display:flex;flex-direction:column;gap:22px;}
+.detail h2{font-size:16px;color:var(--navy);}
+.card{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:16px;padding:20px 22px;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{font-family:'IBM Plex Mono',monospace;font-size:9.3px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);text-align:left;padding:8px 10px;border-bottom:2px solid var(--panel-border);}
+td{padding:10px;border-bottom:1px solid var(--cell-border);color:var(--text-mid);vertical-align:top;line-height:1.45;}
+td b{color:var(--navy);}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.3px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;}
+.formula-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:10px;}
+.formula-card{background:var(--cell-bg);border:1px solid var(--cell-border);border-radius:10px;padding:14px;}
+.formula-card h4{font-size:12.5px;margin:0 0 6px;color:var(--orange);}
+.formula-card code{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--navy);background:#fff;border:1px solid var(--cell-border);padding:8px 10px;border-radius:6px;margin-top:4px;}
+.formula-card p{font-size:10.3px;color:var(--text-dim);margin:6px 0 0;line-height:1.5;}
+.sources{font-size:10.5px;color:var(--text-dim);line-height:1.85;}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;}
+.legend span{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-mid);}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.footnote{font-size:10px;color:var(--text-dim);text-align:center;margin-top:6px;}
+
+@media (max-width: 980px){
+  .stage{aspect-ratio:auto;}
+  .main-grid{grid-template-columns:1fr;}
+  .panel-a,.panel-b{grid-template-columns:1fr;grid-template-areas:"phs" "sub" "fin" "curve";}
+  .panel-b{grid-template-areas:"lvl" "heat" "cnt" "mit";}
+  .ews-row{grid-template-columns:repeat(2,1fr);}
+  .toolbar{flex-direction:column;align-items:flex-start;}
+}
+@media print{
+  .toolbar{display:none;}
+  body{background:#fff;padding:0;}
+  .stage{box-shadow:none;border-radius:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="ttl" id="syncNote"><span style="color:var(--green);font-weight:bold;">⬤ AUTO-SYNC AKTIF</span> — silakan bekerja dan save di Excel, dashboard akan otomatis terupdate tanpa perlu klik lagi.</div>
+  <div class="btnrow">
+    <button class="btn upload" id="btnImport" style="background:var(--primary);color:#fff;">⭱ Aktifkan Auto-Sync Excel</button>
+    <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
+    <span id="importStatus"><span style="color:var(--green)">✓ Auto-Sync: Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT - Copy.xlsx (12.08.37)</span></span>
+    <button class="btn" id="btnPng">⭳ Unduh PNG</button>
+    <button class="btn" id="btnJpg">⭳ Unduh JPG</button>
+    <button class="btn primary" id="btnPdf">⭳ Export PDF</button>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="titlebar">
+    <div>
+      <div class="eyebrow">PT Pupuk Kalimantan Timur · Soda Ash Plant Project (300.000 MTPY)</div>
+      <h1>PROJECT RISK &amp; HEALTH DASHBOARD</h1>
+      <div class="sub" id="periodLine">Reporting Period: Agustus 2026</div>
+    </div>
+    <div class="status-pill" id="statusPill">STATUS: DRAFT</div>
+  </div>
+
+  <div class="main-grid">
+    <div class="panel panel-a">
+      <div class="cell c-phs">
+        <div class="cell-title" style="align-self:flex-start;">Overall Project Health Score</div>
+        <div class="gauge-wrap"><svg id="phsGauge" viewBox="0 0 150 96"><path d="M 11 87.99999999999999 A 64 64 0 0 1 94.77708763999664 27.132382957110174" stroke="#C0392B" stroke-width="11" fill="none" opacity="0.92"></path><path d="M 94.77708763999664 27.132382957110174 A 64 64 0 0 1 120.25483399593904 42.74516600406096" stroke="#E4622E" stroke-width="11" fill="none" opacity="0.92"></path><path d="M 120.25483399593904 42.74516600406096 A 64 64 0 0 1 135.86761704288983 68.22291236000336" stroke="#E8B93A" stroke-width="11" fill="none" opacity="0.92"></path><path d="M 135.86761704288983 68.22291236000336 A 64 64 0 0 1 139 88" stroke="#2E9B57" stroke-width="11" fill="none" opacity="0.92"></path><line x1="75" y1="88" x2="103.23394750330385" y2="46.734467065350024" stroke="#0B1F3A" stroke-width="2.5" stroke-linecap="round"></line><circle cx="75" cy="88" r="4.5" fill="#0B1F3A"></circle></svg></div>
+        <div class="gauge-num" id="phsNum">69.10%</div>
+        <div class="gauge-label">PHS · Komposit 5 Pilar (bobot 20% masing-masing)</div>
+        <div class="rag-chip" id="phsChip" style="background: var(--amber); color: rgb(255, 255, 255);">ORANYE - WASPADA</div>
+      </div>
+      <div class="cell c-sub">
+        <div class="cell-title">Sub-Index Readiness &amp; Performance</div>
+        <div id="subIndexBars"><div class="bar-row" style="margin-bottom:9px;">
+      <div class="kv"><span class="k">Supply Readiness (SRI)</span><span class="v" style="font-size:13px;">6.70%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:6.7%;background:var(--red);"></div></div></div><div class="bar-row" style="margin-bottom:9px;">
+      <div class="kv"><span class="k">Project Execution (PEI)</span><span class="v" style="font-size:13px;">76.80%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:76.8%;background:var(--yellow);"></div></div></div><div class="bar-row" style="margin-bottom:9px;">
+      <div class="kv"><span class="k">Commercial Readiness (CRI)</span><span class="v" style="font-size:13px;">62.00%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:62%;background:var(--amber);"></div></div></div></div>
+      </div>
+      <div class="cell c-fin">
+        <div class="cell-title">Key Financial &amp; Schedule</div>
+        <div id="finKV"><div class="kv" style="padding:3px 0;"><span class="k">CPI</span><span class="v" style="color:var(--green);">1.00</span></div><div class="kv" style="padding:3px 0;"><span class="k">SPI</span><span class="v" style="color:var(--green);">10.00</span></div><div class="kv" style="padding:3px 0;"><span class="k">CV (USD Juta)</span><span class="v" style="color:var(--green);">+0.00</span></div><div class="kv" style="padding:3px 0;"><span class="k">SV (USD Juta)</span><span class="v" style="color:var(--green);">+90.00</span></div></div>
+      </div>
+      <div class="cell c-curve">
+        <div class="cell-title">Master Schedule S-Curve (USD Juta, kumulatif)</div>
+        <div id="scurveChart"><div class="bar-row" style="margin-bottom:7px;">
+      <div class="kv"><span class="k">Planned Value (PV)</span><span class="v" style="font-size:12px;">10.0</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:10%;background:#8B96AA;"></div></div></div><div class="bar-row" style="margin-bottom:7px;">
+      <div class="kv"><span class="k">Earned Value (EV)</span><span class="v" style="font-size:12px;">100.0</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:#FF6A13;"></div></div></div><div class="bar-row" style="margin-bottom:7px;">
+      <div class="kv"><span class="k">Actual Cost (AC)</span><span class="v" style="font-size:12px;">100.0</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:#2E9B57;"></div></div></div></div>
+      </div>
+    </div>
+
+    <div class="panel panel-b">
+      <div class="cell c-lvl">
+        <div class="cell-title" style="align-self:flex-start;">Overall Risk Level (5 Tingkat)</div>
+        <div class="gauge-num" id="riskLevelText" style="font-size: 22px; color: rgb(255, 217, 102);">Moderate</div>
+        <div class="gauge-label" id="riskScoreText">Skor Komposit: 45.80 / 100</div>
+      </div>
+      <div class="cell c-heat">
+        <div class="cell-title">Risk Profile Heat Map (Likelihood x Consequence)</div>
+        <div class="heatmap" id="heatmap"><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=1, C=5, Skala=20 (High)"></div><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=2, C=5, Skala=21 (High)"></div><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=3, C=5, Skala=23 (High)"></div><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=4, C=5, Skala=24 (High)">C1</div><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=5, C=5, Skala=25 (High)">C2</div><div class="hcell" style="background:#FFD966;border:1px solid #FFD966;color:#0C2038;" title="L=1, C=4, Skala=15 (Moderate)"></div><div class="hcell" style="background:#F4B183;border:1px solid #F4B183;color:#0C2038;" title="L=2, C=4, Skala=16 (Moderate to High)"></div><div class="hcell" style="background:#F4B183;border:1px solid #F4B183;color:#0C2038;" title="L=3, C=4, Skala=18 (Moderate to High)"></div><div class="hcell" style="background:#F4B183;border:1px solid #F4B183;color:#0C2038;" title="L=4, C=4, Skala=19 (Moderate to High)">C3</div><div class="hcell" style="background:#E06666;border:1px solid #E06666;color:#FFFFFF;" title="L=5, C=4, Skala=22 (High)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=1, C=3, Skala=10 (Low to Moderate)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=2, C=3, Skala=11 (Low to Moderate)"></div><div class="hcell" style="background:#FFD966;border:1px solid #FFD966;color:#0C2038;" title="L=3, C=3, Skala=13 (Moderate)">C4</div><div class="hcell" style="background:#FFD966;border:1px solid #FFD966;color:#0C2038;" title="L=4, C=3, Skala=14 (Moderate)"></div><div class="hcell" style="background:#F4B183;border:1px solid #F4B183;color:#0C2038;" title="L=5, C=3, Skala=17 (Moderate to High)"></div><div class="hcell" style="background:#538135;border:1px solid #538135;color:#FFFFFF;" title="L=1, C=2, Skala=5 (Low)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=2, C=2, Skala=6 (Low to Moderate)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=3, C=2, Skala=8 (Low to Moderate)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=4, C=2, Skala=9 (Low to Moderate)"></div><div class="hcell" style="background:#FFD966;border:1px solid #FFD966;color:#0C2038;" title="L=5, C=2, Skala=12 (Moderate)"></div><div class="hcell" style="background:#538135;border:1px solid #538135;color:#FFFFFF;" title="L=1, C=1, Skala=1 (Low)"></div><div class="hcell" style="background:#538135;border:1px solid #538135;color:#FFFFFF;" title="L=2, C=1, Skala=2 (Low)"></div><div class="hcell" style="background:#538135;border:1px solid #538135;color:#FFFFFF;" title="L=3, C=1, Skala=3 (Low)"></div><div class="hcell" style="background:#538135;border:1px solid #538135;color:#FFFFFF;" title="L=4, C=1, Skala=4 (Low)"></div><div class="hcell" style="background:#A9D18E;border:1px solid #A9D18E;color:#0C2038;" title="L=5, C=1, Skala=7 (Low to Moderate)"></div></div>
+        <div class="heat-axes"><span>1</span><span>2</span><span>3</span><span>4</span><span>Likelihood 5</span></div>
+        <div class="heat-legend" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:7.5px;font-family:&#39;IBM Plex Mono&#39;,monospace;">
+          <span style="display:flex;align-items:center;gap:3px;"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:#538135;"></i>Low (1-5)</span>
+          <span style="display:flex;align-items:center;gap:3px;"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:#A9D18E;"></i>Low-Mod (6-11)</span>
+          <span style="display:flex;align-items:center;gap:3px;"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:#FFD966;"></i>Moderate (12-15)</span>
+          <span style="display:flex;align-items:center;gap:3px;"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:#F4B183;"></i>Mod-High (16-19)</span>
+          <span style="display:flex;align-items:center;gap:3px;"><i style="width:9px;height:9px;border-radius:2px;display:inline-block;background:#E06666;"></i>High (20-25)</span>
+        </div>
+      </div>
+      <div class="cell c-cnt">
+        <div class="cell-title">Risk Register — Risiko Aktif</div>
+        <div id="riskCounts"><div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E06666;margin-right:6px;"></i>High</span><span class="v" style="font-size:13px;">5</span></div><div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#F4B183;margin-right:6px;"></i>Moderate to High</span><span class="v" style="font-size:13px;">11</span></div><div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#FFD966;margin-right:6px;"></i>Moderate</span><span class="v" style="font-size:13px;">18</span></div><div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#A9D18E;margin-right:6px;"></i>Low to Moderate</span><span class="v" style="font-size:13px;">4</span></div><div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#538135;margin-right:6px;"></i>Low</span><span class="v" style="font-size:13px;">3</span></div><div class="kv" style="padding-top:5px;margin-top:3px;border-top:1px solid var(--cell-border);"><span class="k">Total Aktif</span><span class="v">41</span></div></div>
+      </div>
+      <div class="cell c-mit">
+        <div class="cell-title">Mitigation Health Progress</div>
+        <div id="mitigationBars"><div class="bar-row" style="margin-bottom:6px;">
+      <div class="kv"><span class="k">Completed</span><span class="v" style="font-size:12px;">82.00%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:82%;background:var(--green);"></div></div></div><div class="bar-row" style="margin-bottom:6px;">
+      <div class="kv"><span class="k">On Track</span><span class="v" style="font-size:12px;">76.00%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:76%;background:var(--yellow);"></div></div></div><div class="bar-row" style="margin-bottom:6px;">
+      <div class="kv"><span class="k">Overdue</span><span class="v" style="font-size:12px;">18.00%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:18%;background:var(--red);"></div></div></div><div class="kv" style="padding-top:2px;"><span class="k">Need Escalation</span><span class="v" style="color:var(--red);">5 aksi</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-c">
+    <div class="cell-title">Panel C · Early Warning System (EWS) Alerts</div>
+    <div class="ews-row" id="ewsRow"><div class="ews-chip" style="border-left-color:var(--red);">
+      <div class="p">Salt Inventory (hari ketahanan)</div><div class="a">24 hari</div><div class="t">Threshold: Min. 30 hari</div>
+      <span class="stlabel" style="background:var(--red);color:#fff;">BAHAYA</span></div><div class="ews-chip" style="border-left-color:var(--yellow);">
+      <div class="p">Procurement Progress</div><div class="a">73%</div><div class="t">Threshold: Min. 80%</div>
+      <span class="stlabel" style="background:var(--yellow);color:#5C4300;">WASPADA</span></div><div class="ews-chip" style="border-left-color:var(--yellow);">
+      <div class="p">Project SPI</div><div class="a">0.94</div><div class="t">Threshold: SPI ≥ 1,00</div>
+      <span class="stlabel" style="background:var(--yellow);color:#5C4300;">WASPADA</span></div><div class="ews-chip" style="border-left-color:var(--red);">
+      <div class="p">Supplier Qualification</div><div class="a">75%</div><div class="t">Threshold: 100% terverifikasi</div>
+      <span class="stlabel" style="background:var(--red);color:#fff;">BAHAYA</span></div><div class="ews-chip" style="border-left-color:var(--red);">
+      <div class="p">Commissioning Readiness</div><div class="a">42%</div><div class="t">Threshold: Min. 60%</div>
+      <span class="stlabel" style="background:var(--red);color:#fff;">BAHAYA</span></div><div class="ews-chip" style="border-left-color:var(--red);">
+      <div class="p">Product Qualification</div><div class="a">40%</div><div class="t">Threshold: Min. 50%</div>
+      <span class="stlabel" style="background:var(--red);color:#fff;">BAHAYA</span></div></div>
+  </div>
+
+  <div class="panel-d">
+    <div class="lbl">PANEL D · KEPUTUSAN DIREKSI</div>
+    <div class="txt"><b>Prioritas 1—2:</b> Sahkan Interface Coordinator lintas EPC-A/B/C/D &amp; IMP mengikat kontraktor · Lobi kuota impor garam industri (Perpres 17/2025) ke Kemenperin/KKP sebelum start-up. Rincian lengkap di bawah ↓</div>
+  </div>
+</div>
+
+<div class="detail" id="detailSection">
+
+  <div class="card">
+    <div class="eyebrow">Metodologi</div>
+    <h2>Formula Perhitungan 5 Pilar Kesehatan Proyek</h2>
+    <div class="formula-grid" id="formulaGrid"><div class="formula-card"><h4>Financial Health</h4><code>CPI = EV / AC<br>CV = EV − AC</code><p>Earned Value Management (EVM) — mengukur efisiensi biaya proyek.</p></div><div class="formula-card"><h4>Schedule Health</h4><code>SPI = EV / PV<br>SV = EV − PV</code><p>EVM — mengukur kepatuhan durasi terhadap master schedule baseline.</p></div><div class="formula-card"><h4>Supply Readiness (SRI)</h4><code>SRI = Σ (Wᵢ × Sᵢ)</code><p>5 parameter tertimbang: Salt Contract 25%, Salt Inventory 20%, Supplier Qualification 20%, Shipping Readiness 20%, Utility Readiness 15%.</p></div><div class="formula-card"><h4>Project Execution (PEI)</h4><code>PEI = Σ (Pⱼ × Wⱼ)</code><p>4 parameter tertimbang: Engineering 25%, Procurement 30%, Construction 35%, Commissioning Prep 10%.</p></div><div class="formula-card"><h4>Commercial Readiness (CRI)</h4><code>CRI = Σ (Wₖ × Sₖ)</code><p>5 parameter tertimbang: Offtake 20%, Marketing 20%, Distribution 15%, Operation Team 20%, Product Qualification 25%.</p></div><div class="formula-card"><h4>Overall Health (PHS)</h4><code>PHS = (Fin×0,2)+(Sched×0,2)+(SRI×0,2)+(PEI×0,2)+(CRI×0,2)</code><p>Skor Fin/Sched dikonversi dari CPI/SPI (dibatasi maksimal 100 bila indeks ≥1,00).</p></div><div class="formula-card"><h4>Overall Risk Index</h4><code>Idx = (Supply×0,4)+(Exec×0,4)+(Commercial×0,2)</code><p>Skala 0–100, benchmark Pertamina; diklasifikasi ke 5 tingkat risiko PKT.<br><br></p><div class="footnote" style="margin-top:4px;">0–20 = Low | 21–44 = Low to Moderate | 45–60 = Moderate | 61–76 = Moderate to High | 77–100 = High</div><p></p></div><div class="formula-card"><h4>Risk Matriks 5x5 (Top Risk)</h4><code>Skala = Tabel Skala Risiko Non-Linear 5x5 (bukan L × C sederhana)</code><p>Rentang 1–25; diklasifikasi ke 5 tingkat: Low(1-5), Low to Moderate(6-11), Moderate(12-15), Moderate to High(16-19), High(20-25). Memprioritaskan Consequence dibanding Likelihood untuk nilai sama — lihat sheet Excel Referensi_Threshold bagian 10.</p></div><div class="formula-card"><h4>Early Warning System (EWS)</h4><code>Status = Aman / Waspada / Bahaya (buffer 10% dari threshold)</code><p>Aman: Aktual ≥ Threshold. Waspada: Threshold×90% ≤ Aktual &lt; Threshold. Bahaya: Aktual &lt; Threshold×90% — mengacu COSO ERM 2017 &amp; RCSA-KRI Pertamina, lihat sheet Excel Referensi_Threshold bagian 11.</p></div><div class="formula-card"><h4>Jumlah Register Risiko Aktif</h4><code>Risiko dikategorikan ke 5 tingkat risiko PKT berdasarkan skala L × C</code><p>Setiap risiko dalam register diklasifikasi menjadi:<br>• <b>Low</b> (Skala 1–5)<br>• <b>Low to Moderate</b> (Skala 6–11)<br>• <b>Moderate</b> (Skala 12–15)<br>• <b>Moderate to High</b> (Skala 16–19)<br>• <b>High</b> (Skala 20–25)<br>Mengikuti nomenklatur Pedoman Manajemen Risiko PKT.</p></div>
+  <div class="formula-card" style="grid-column:1/-1;border-left:4px solid var(--orange);">
+    <h4 style="font-size:13px;">📊 Cara Mendapatkan Angka Sub-Indeks Risiko (Supply / Execution / Commercial Risk Index)</h4>
+    <p style="font-size:11px;line-height:1.7;color:var(--text-mid);">
+      Masing-masing sub-indeks risiko (<b>Supply Risk Index</b>, <b>Execution Risk Index</b>, <b>Commercial Risk Index</b>) dihitung secara terpisah melalui <b>metode penilaian pakar (expert scoring)</b> pada skala 0–100. Berikut penjelasan setiap sub-indeks:<br><br>
+      <b>1. Supply Risk Index</b> — Mengukur tingkat risiko rantai pasokan bahan baku proyek.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: ketersediaan kontrak garam jangka panjang, stabilitas harga, keandalan pemasok, kapasitas logistik &amp; pelabuhan, serta regulasi impor garam (Perpres 17/2025).<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (pasokan sepenuhnya terjamin), <b>Skor 100</b> = risiko sangat tinggi (pasokan tidak tersedia).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D41</b>.<br><br>
+      <b>2. Execution Risk Index</b> — Mengukur tingkat risiko pelaksanaan proyek EPC.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: progres konstruksi vs jadwal, performa kontraktor, isu interface antar EPC packages, kesiapan commissioning, ketersediaan sumber daya, serta kendala perizinan.<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (eksekusi sempurna), <b>Skor 100</b> = risiko sangat tinggi (proyek terhenti).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D42</b>.<br><br>
+      <b>3. Commercial Risk Index</b> — Mengukur tingkat risiko komersial &amp; pemasaran produk soda ash.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: offtake agreement, strategi pemasaran, kesiapan distribusi, kualifikasi produk, serta persaingan impor.<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (pasar terjamin), <b>Skor 100</b> = risiko sangat tinggi (pasar tidak tersedia).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D43</b>.<br><br>
+      <b>Overall Risk Index</b> kemudian dihitung sebagai rata-rata tertimbang:<br>
+      <code style="display:inline;background:#fff;border:1px solid var(--cell-border);padding:3px 8px;border-radius:4px;font-size:11px;">Overall Risk Index = (Supply × 0,4) + (Execution × 0,4) + (Commercial × 0,2)</code><br><br>
+      Bobot mencerminkan bahwa pada tahap konstruksi, risiko pasokan &amp; eksekusi memiliki dampak dominan terhadap keberhasilan proyek. Hasilnya diklasifikasi ke 5 tingkat risiko PKT:<br>
+      • <b>0–20</b> = Low &nbsp;|&nbsp; <b>21–40</b> = Low to Moderate &nbsp;|&nbsp; <b>41–60</b> = Moderate &nbsp;|&nbsp; <b>61–80</b> = Moderate to High &nbsp;|&nbsp; <b>81–100</b> = High
+    </p>
+  </div></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Panel B — Kriteria Matriks Risiko</div>
+    <h2>Kriteria Likelihood (L) &amp; Consequence (C) — Matriks Risiko 5x5</h2>
+    <p style="font-size:10.5px;color:var(--text-dim);margin:2px 0 10px;">Kriteria berikut mengikuti kaidah standar manajemen risiko (ISO 31000 &amp; benchmark Pertamina RCSA/KRI). Sesuaikan dengan Pedoman Manajemen Risiko PKT resmi apabila tersedia angka baku internal.</p>
+    <table>
+      <thead><tr><th style="width:40px">L</th><th>Kategori Likelihood</th><th style="width:40px">C</th><th>Kategori Consequence</th></tr></thead>
+      <tbody id="lcCriteriaTable"><tr><td><b>1</b></td><td><b>Sangat Jarang Terjadi</b><br><span style="font-size:10.5px;">Kemungkinan terjadi &lt; 10% selama siklus proyek; belum pernah terjadi pada proyek sejenis.</span></td>
+      <td><b>1</b></td><td><b>Sangat Rendah</b><br><span style="font-size:10.5px;">Dampak biaya &lt; USD 0,5 Juta; keterlambatan &lt; 1 minggu; tanpa dampak reputasi/K3.</span></td></tr><tr><td><b>2</b></td><td><b>Jarang Terjadi</b><br><span style="font-size:10.5px;">Kemungkinan terjadi 10-30%; pernah terjadi namun jarang pada proyek EPC sejenis.</span></td>
+      <td><b>2</b></td><td><b>Rendah</b><br><span style="font-size:10.5px;">Dampak biaya USD 0,5–2 Juta; keterlambatan 1–4 minggu; dapat dikelola PIC.</span></td></tr><tr><td><b>3</b></td><td><b>Bisa Terjadi</b><br><span style="font-size:10.5px;">Kemungkinan terjadi 30-50%; pernah terjadi beberapa kali pada proyek sejenis.</span></td>
+      <td><b>3</b></td><td><b>Moderat</b><br><span style="font-size:10.5px;">Dampak biaya USD 2–10 Juta; keterlambatan 1–2 bulan; perhatian manajemen menengah/PSC.</span></td></tr><tr><td><b>4</b></td><td><b>Sangat Mungkin Terjadi</b><br><span style="font-size:10.5px;">Kemungkinan terjadi 50-70%; kondisi/indikasi saat ini mengarah pada terjadinya risiko.</span></td>
+      <td><b>4</b></td><td><b>Tinggi</b><br><span style="font-size:10.5px;">Dampak biaya USD 10–30 Juta; keterlambatan 2–6 bulan; berisiko pada target COD.</span></td></tr><tr><td><b>5</b></td><td><b>Hampir Pasti Terjadi</b><br><span style="font-size:10.5px;">Kemungkinan terjadi &gt; 70%; indikasi kuat / sedang berlangsung saat ini.</span></td>
+      <td><b>5</b></td><td><b>Sangat Tinggi</b><br><span style="font-size:10.5px;">Dampak biaya &gt; USD 30 Juta; keterlambatan &gt; 6 bulan/mengancam kegagalan COD &amp; NPV proyek.</span></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Panel B — Detail</div>
+    <h2>Top Risk Register (C1–C4) &amp; Klasifikasi Level Risiko</h2>
+    <table>
+      <thead><tr><th>Kode</th><th>Deskripsi Risiko</th><th>Kategori</th><th>L</th><th>C</th><th>Skala (1-25)</th><th>Risk Level</th></tr></thead>
+      <tbody id="riskRegisterTable"><tr><td><span class="tag" style="background:var(--navy-soft);">C1</span></td>
+      <td><b>Salt Supply Disruption (gangguan pasokan garam industri)</b></td><td>Hulu / Supply</td><td style="text-align:center;">4</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>24</b></td><td><span class="tag" style="background:#E06666;">High</span></td></tr><tr><td><span class="tag" style="background:var(--navy-soft);">C2</span></td>
+      <td><b>Commissioning Delay (keterlambatan commissioning)</b></td><td>Eksekusi</td><td style="text-align:center;">5</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>25</b></td><td><span class="tag" style="background:#E06666;">High</span></td></tr><tr><td><span class="tag" style="background:var(--navy-soft);">C3</span></td>
+      <td><b>EPC Interface Issue (isu EPC interface lintas kontraktor)</b></td><td>Eksekusi</td><td style="text-align:center;">4</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>19</b></td><td><span class="tag" style="background:#F4B183;">Moderate to High</span></td></tr><tr><td><span class="tag" style="background:var(--navy-soft);">C4</span></td>
+      <td><b>Long Lead Equipment (keterlambatan peralatan utama)</b></td><td>Pengadaan</td><td style="text-align:center;">3</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>13</b></td><td><span class="tag" style="background:#FFD966;">Moderate</span></td></tr></tbody>
+    </table>
+    <div class="legend" id="risk5Legend" style="margin-top:14px;"><span><i style="background:#538135;"></i>Low</span><span><i style="background:#A9D18E;"></i>Low to Moderate</span><span><i style="background:#FFD966;"></i>Moderate</span><span><i style="background:#F4B183;"></i>Moderate to High</span><span><i style="background:#E06666;"></i>High</span></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Panel B — Referensi</div>
+    <h2>Tabel Skala Risiko Non-Linear 5x5 &amp; Warna Heat Map (Skala 1–25)</h2>
+    <p style="font-size:10.5px;color:var(--text-dim);margin:2px 0 10px;">Urutan (rank) 1–25 untuk setiap kombinasi Likelihood (L) × Consequence (C), sesuai spesifikasi metodologi risiko internal Project Control Soda Ash PKT. Berbeda dari perkalian L×C sederhana, urutan ini memberi bobot lebih besar pada Consequence saat terjadi nilai sama — konsisten dengan kaidah non-linear risk ranking pada ISO 31000:2018 &amp; praktik matriks risiko K3/SMKP BUMN sektor energi-tambang (pola rujukan: Kepdirjen Minerba No.1827.K/30/MEM/2018). Skala ini menentukan posisi &amp; warna sel pada Risk Profile Heat Map. Tabel identik dengan sheet Excel <i>Referensi_Threshold</i> bagian 10.</p>
+    <table>
+      <thead><tr><th style="width:40px">L</th><th style="width:40px">C</th><th style="width:70px">Skala</th><th>Level Risiko</th></tr></thead>
+      <tbody id="scaleTable"><tr><td style="text-align:center;">1</td><td style="text-align:center;">1</td>
+      <td style="text-align:center;"><b>1</b></td>
+      <td><span class="tag" style="background:#538135;color:#fff;">Low</span></td></tr><tr><td style="text-align:center;">2</td><td style="text-align:center;">1</td>
+      <td style="text-align:center;"><b>2</b></td>
+      <td><span class="tag" style="background:#538135;color:#fff;">Low</span></td></tr><tr><td style="text-align:center;">3</td><td style="text-align:center;">1</td>
+      <td style="text-align:center;"><b>3</b></td>
+      <td><span class="tag" style="background:#538135;color:#fff;">Low</span></td></tr><tr><td style="text-align:center;">4</td><td style="text-align:center;">1</td>
+      <td style="text-align:center;"><b>4</b></td>
+      <td><span class="tag" style="background:#538135;color:#fff;">Low</span></td></tr><tr><td style="text-align:center;">1</td><td style="text-align:center;">2</td>
+      <td style="text-align:center;"><b>5</b></td>
+      <td><span class="tag" style="background:#538135;color:#fff;">Low</span></td></tr><tr><td style="text-align:center;">2</td><td style="text-align:center;">2</td>
+      <td style="text-align:center;"><b>6</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">5</td><td style="text-align:center;">1</td>
+      <td style="text-align:center;"><b>7</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">3</td><td style="text-align:center;">2</td>
+      <td style="text-align:center;"><b>8</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">4</td><td style="text-align:center;">2</td>
+      <td style="text-align:center;"><b>9</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">1</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>10</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">2</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>11</b></td>
+      <td><span class="tag" style="background:#A9D18E;color:#0C2038;">Low to Moderate</span></td></tr><tr><td style="text-align:center;">5</td><td style="text-align:center;">2</td>
+      <td style="text-align:center;"><b>12</b></td>
+      <td><span class="tag" style="background:#FFD966;color:#0C2038;">Moderate</span></td></tr><tr><td style="text-align:center;">3</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>13</b></td>
+      <td><span class="tag" style="background:#FFD966;color:#0C2038;">Moderate</span></td></tr><tr><td style="text-align:center;">4</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>14</b></td>
+      <td><span class="tag" style="background:#FFD966;color:#0C2038;">Moderate</span></td></tr><tr><td style="text-align:center;">1</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>15</b></td>
+      <td><span class="tag" style="background:#FFD966;color:#0C2038;">Moderate</span></td></tr><tr><td style="text-align:center;">2</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>16</b></td>
+      <td><span class="tag" style="background:#F4B183;color:#0C2038;">Moderate to High</span></td></tr><tr><td style="text-align:center;">5</td><td style="text-align:center;">3</td>
+      <td style="text-align:center;"><b>17</b></td>
+      <td><span class="tag" style="background:#F4B183;color:#0C2038;">Moderate to High</span></td></tr><tr><td style="text-align:center;">3</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>18</b></td>
+      <td><span class="tag" style="background:#F4B183;color:#0C2038;">Moderate to High</span></td></tr><tr><td style="text-align:center;">4</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>19</b></td>
+      <td><span class="tag" style="background:#F4B183;color:#0C2038;">Moderate to High</span></td></tr><tr><td style="text-align:center;">1</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>20</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr><tr><td style="text-align:center;">2</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>21</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr><tr><td style="text-align:center;">5</td><td style="text-align:center;">4</td>
+      <td style="text-align:center;"><b>22</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr><tr><td style="text-align:center;">3</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>23</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr><tr><td style="text-align:center;">4</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>24</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr><tr><td style="text-align:center;">5</td><td style="text-align:center;">5</td>
+      <td style="text-align:center;"><b>25</b></td>
+      <td><span class="tag" style="background:#E06666;color:#fff;">High</span></td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Panel D — Detail</div>
+    <h2>Executive Action Tracker — Direksi / Project Steering Committee</h2>
+    <table>
+      <thead><tr><th style="width:26px">No</th><th>Isu Strategis / Risiko Kritis</th><th>Kategori &amp; Level</th><th>Keputusan &amp; Rencana Tindakan</th><th>PIC</th><th>Dampak Finansial &amp; NPV</th></tr></thead>
+      <tbody id="actionTable"><tr><td>1</td><td><b>Ketergantungan Antarmuka (Interface) Lintas EPC-A, B, C, D</b></td>
+      <td><span class="tag" style="background:#E06666;">Eksekusi · High</span></td>
+      <td>Mengesahkan pembentukan tim Interface Coordinator dan menerapkan Interface Management Plan (IMP) yang mengikat seluruh kontraktor; menyelaraskan jadwal desain Rekind dengan kemajuan ISBL EPC-A.</td><td>VP Proyek Soda Ash &amp; SVP Pengembangan Portofolio</td><td>Mencegah kegagalan penyelesaian proyek bersamaan; mengamankan target COD Maret 2028; melindungi NPV USD 77,60 Juta.</td></tr><tr><td>2</td><td><b>Keterbatasan Kapasitas Keuangan Rekind (EPC-B)</b></td>
+      <td><span class="tag" style="background:#F4B183;">Finansial · Moderate to High</span></td>
+      <td>Memberikan dispensasi perpanjangan jaminan pelaksanaan secara terkendali; meminta Parent Company Guarantee dari PT Pupuk Indonesia (Persero).</td><td>Direktur Utama PKT &amp; SVP Keuangan</td><td>Melindungi penyelesaian gardu kelistrikan &amp; fasilitas tie-in; menghindari denda klaim tambahan dari EPC-A.</td></tr><tr><td>3</td><td><b>Kelangkaan &amp; Hambatan Perizinan Impor Garam Industri</b></td>
+      <td><span class="tag" style="background:#F4B183;">Hulu / Supply · Moderate to High</span></td>
+      <td>Lobi aktif dengan Kementerian Perindustrian &amp; Kementerian Kelautan dan Perikanan untuk kuota impor tahunan, merujuk Perpres No.17/2025.</td><td>Direktur Utama PKT &amp; SVP Pengembangan Portofolio</td><td>Menghindari penghentian operasional akibat kekosongan bahan baku; menghemat potensi kerugian EBITDA Rp 137 Miliar/kuartal.</td></tr><tr><td>4</td><td><b>Fluktuasi Nilai Tukar Valas atas Sisa Pembayaran Kontrak EPC-A</b></td>
+      <td><span class="tag" style="background:#FFD966;">Keuangan · Moderate</span></td>
+      <td>Mengimplementasikan strategi hedging valas (forward/opsi) bersama bank BUMN nasional untuk mengunci porsi sisa pembayaran USD.</td><td>Direktur Keuangan PKT</td><td>Mengeliminasi risiko pembengkakan biaya investasi riil; mengamankan ambang batas investasi USD 297,67 Juta.</td></tr><tr><td>5</td><td><b>Hambatan Penerbitan PBG &amp; SLF di Lahan Tursina Barat</b></td>
+      <td><span class="tag" style="background:#FFD966;">Regulasi · Moderate</span></td>
+      <td>Membentuk tim percepatan perizinan internal untuk koordinasi harian dengan DLH Kota Bontang &amp; Dinas PUPR Provinsi Kaltim.</td><td>VP Hukum &amp; Humas PKT</td><td>Mencegah keterlambatan masa efektif konstruksi; menghemat opportunity cost of capital Rp 500 Juta/bulan.</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Panel C — Detail</div>
+    <h2>Tabel Status Peringatan Dini (EWS)</h2>
+    <table>
+      <thead><tr><th>Parameter</th><th>Threshold</th><th>Aktual</th><th style="width:56px;text-align:center;">Aman</th><th style="width:56px;text-align:center;">Waspada</th><th style="width:56px;text-align:center;">Bahaya</th><th>Implikasi Operasional &amp; Finansial</th></tr></thead>
+      <tbody id="ewsTable"><tr><td><b>Salt Inventory (hari ketahanan)</b></td><td>Min. 30 hari</td><td>24 hari</td>
+      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
+      <td>Menimbulkan risiko penghentian mendadak kiln kalsinasi akibat keterlambatan kapal bersandar.</td></tr><tr><td><b>Procurement Progress</b></td><td>Min. 80%</td><td>73%</td>
+      <td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--yellow);"></span></td><td class="ews-3col"></td>
+      <td>Menunda kedatangan material pemipaan di area penukar panas utama.</td></tr><tr><td><b>Project SPI</b></td><td>SPI ≥ 1,00</td><td>0.94</td>
+      <td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--yellow);"></span></td><td class="ews-3col"></td>
+      <td>Proyek terlambat 6% dari baseline rencana, mengancam target penyelesaian Maret 2028.</td></tr><tr><td><b>Supplier Qualification</b></td><td>100% terverifikasi</td><td>75%</td>
+      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
+      <td>Garam domestik berisiko kadar kalsium tinggi, berpotensi menyumbat tower karbonasi.</td></tr><tr><td><b>Commissioning Readiness</b></td><td>Min. 60%</td><td>42%</td>
+      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
+      <td>Menunda masa uji coba fungsional alat berputar dan utilitas utama di ISBL.</td></tr><tr><td><b>Product Qualification</b></td><td>Min. 50%</td><td>40%</td>
+      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
+      <td>Potensi penolakan serapan pasar untuk aplikasi industri kaca lembaran (produk premium).</td></tr></tbody>
+    </table>
+    <p style="font-size:9.5px;color:var(--text-dim);margin:8px 0 0;">Metodologi 3-status (Aman/Waspada/Bahaya) menggunakan buffer toleransi 10% dari threshold sebagai batas Waspada (Amber Zone), mengacu pada COSO Enterprise Risk Management Framework (2017) &amp; praktik RCSA-KRI PT Pertamina (Persero). Lihat sheet Excel <i>Referensi_Threshold</i> bagian 11 untuk detail lengkap.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Dinamika Bulan Berjalan</div>
+    <h2>Pergerakan Risiko</h2>
+    <div class="formula-grid" id="riskMovementGrid"><div class="formula-card"><h4>Risiko Baru = 2</h4><p>Perubahan tarif pajak masukan impor garam industri; sengketa lahan tambahan area laydown.</p></div><div class="formula-card"><h4>Risiko Eskalasi = 3</h4><p>Peningkatan level risiko keterlambatan Rekind akibat kendala arus kas internal.</p></div><div class="formula-card"><h4>Risiko Menurun = 5</h4><p>Penurunan risiko dampak sosial setelah disepakati kuota tenaga kerja lokal.</p></div><div class="formula-card"><h4>Risiko Ditutup = 4</h4><p>Penutupan risiko AMDAL seiring izin adendum lingkungan DLH Bontang.</p></div></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Sinkronisasi dengan Excel</div>
+    <h2>Cara Update Bulanan</h2>
+    <div class="sources">
+      1. Buka &amp; isi sel kuning pada sheet <b>Input_Bulanan</b> di file Excel "Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.xlsx" setiap periode pelaporan.<br>
+      2. Simpan file Excel tersebut (format tetap .xlsx).<br>
+      3. Kembali ke halaman ini, klik tombol <b>"Import Excel Bulanan"</b> di pojok kiri atas, lalu pilih file Excel yang sudah diupdate.<br>
+      4. Seluruh angka, warna RAG, heat map, dan level risiko pada dashboard ini akan otomatis menyesuaikan — tanpa perlu edit kode HTML.<br>
+      Catatan: proses import berjalan sepenuhnya di browser Anda (tidak diunggah ke server manapun), sehingga aman digunakan untuk data internal perusahaan.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Sumber &amp; Referensi</div>
+    <h2>Rujukan Perhitungan &amp; Benchmark</h2>
+    <div class="sources">
+      1. Risk Register Soda Ash — Pengelompokan Tahapan Pekerjaan Proyek, PT Pupuk Kalimantan Timur (2025); Studi Kelayakan (Feasibility Study) independen oleh Deloitte.<br>
+      2. Earned Value Management (CPI/SPI) — ScheduleReader, "Managing Project Health with the Schedule and Cost Performance Indices."<br>
+      3. Identitas Perusahaan — PT Pupuk Kalimantan Timur, pupukkaltim.com.<br>
+      4. Risk Appetite berbasis Net Working Capital — PT Biro Klasifikasi Indonesia (Persero), Annual Report, merujuk SK-6/2023.<br>
+      5. Fundamental KPI Keandalan Aset (MTBF/PMR/OEE) — Tractian, "Fundamental KPIs for Plant Manager in Chemical."<br>
+      6. Manufacturing Plant KPI Benchmark — iFactory AI, "Top 20 Manufacturing Plant KPIs &amp; Metrics."<br>
+      7. Kerangka tata kelola risiko — PT Pertamina (Persero): Direktorat Manajemen Risiko (2nd Line of Defense, Permen BUMN No.02/2023), Komite Tata Kelola Terintegrasi (KTKT), Gate Review/FID, RCSA, KRI, ICT, C-RBDD.<br>
+      8. Kriteria Likelihood &amp; Consequence matriks 5x5 — standar umum ISO 31000:2018 Risk Management, diadaptasi untuk konteks proyek EPC kimia; klasifikasi 5-tingkat (Low/Low to Moderate/Moderate/Moderate to High/High) mengikuti nomenklatur Pedoman Manajemen Risiko PKT.
+    </div>
+    <div class="footnote">Data periode berjalan bersifat ilustratif/DRAFT sampai file Excel bulanan diimpor. Struktur sel Input_Bulanan (D5,D8:D10,D17:D21,D25:D28,D33:D37,D41:D43,D48:D52,D56:D59,F56:F59,E63:E68,F63:F68,C74:I77) sudah dipetakan otomatis oleh importer di bawah — jangan mengubah tata letak sheet Input_Bulanan agar impor tetap berfungsi.</div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================================
+   DATA DEFAULT — nilai awal (Maret 2026, ilustratif). Akan ditimpa otomatis
+   saat pengguna melakukan Import Excel Bulanan.
+========================================================================= */
+let DATA = {
+  period: "Maret 2026",
+  status: "DRAFT",
+  evm: { pv: 280.8, ev: 264.6, ac: 270.0 },
+  sri: { weights:[.25,.20,.20,.20,.15], labels:["Salt Contract","Salt Inventory","Supplier Qualification","Shipping Readiness","Utility Readiness"],
+    items:[["Salt Contract",82],["Salt Inventory",80],["Supplier Qualification",75],["Shipping Readiness",85],["Utility Readiness",80]] },
+  pei: { weights:[.25,.30,.35,.10], labels:["Engineering Progress","Procurement Progress","Construction Progress","Commissioning Preparation"],
+    items:[["Engineering Progress",88],["Procurement Progress",73],["Construction Progress",82],["Commissioning Preparation",42]] },
+  cri: { weights:[.20,.20,.15,.20,.25], labels:["Offtake Agreement","Marketing Strategy","Distribution Readiness","Operation Team Ready","Product Qualification"],
+    items:[["Offtake Agreement",60],["Marketing Strategy",60],["Distribution Readiness",80],["Operation Team Ready",80],["Product Qualification",40]] },
+  riskIndex: { supply:82, execution:75, commercial:55 },
+  riskCounts: { high:5, moderateToHigh:11, moderate:18, lowToModerate:4, low:3 },
+  mitigation: { completed:82, onTrack:76, overdue:18, escalations:5 },
+  riskMovement: { baru:2, eskalasi:3, menurun:5, ditutup:4 },
+  topRisks: [
+    {code:"C1", desc:"Salt Supply Disruption (gangguan pasokan garam industri)", kat:"Hulu / Supply", L:4, C:5},
+    {code:"C2", desc:"Commissioning Delay (keterlambatan uji fungsi)", kat:"Eksekusi", L:5, C:5},
+    {code:"C3", desc:"EPC Interface Issue (isu antarmuka lintas kontraktor)", kat:"Eksekusi", L:4, C:4},
+    {code:"C4", desc:"Long Lead Equipment (keterlambatan peralatan utama)", kat:"Pengadaan", L:3, C:3},
+  ],
+  likelihoodCriteria: [
+    [1,"Sangat Jarang Terjadi","Kemungkinan terjadi < 10% selama siklus proyek; belum pernah terjadi pada proyek sejenis."],
+    [2,"Jarang Terjadi","Kemungkinan terjadi 10-30%; pernah terjadi namun jarang pada proyek EPC sejenis."],
+    [3,"Bisa Terjadi","Kemungkinan terjadi 30-50%; pernah terjadi beberapa kali pada proyek sejenis."],
+    [4,"Sangat Mungkin Terjadi","Kemungkinan terjadi 50-70%; kondisi/indikasi saat ini mengarah pada terjadinya risiko."],
+    [5,"Hampir Pasti Terjadi","Kemungkinan terjadi > 70%; indikasi kuat / sedang berlangsung saat ini."],
+  ],
+  consequenceCriteria: [
+    [1,"Sangat Rendah","Dampak biaya < USD 0,5 Juta; keterlambatan < 1 minggu; tanpa dampak reputasi/K3."],
+    [2,"Rendah","Dampak biaya USD 0,5–2 Juta; keterlambatan 1–4 minggu; dapat dikelola PIC."],
+    [3,"Moderat","Dampak biaya USD 2–10 Juta; keterlambatan 1–2 bulan; perhatian manajemen menengah/PSC."],
+    [4,"Tinggi","Dampak biaya USD 10–30 Juta; keterlambatan 2–6 bulan; berisiko pada target COD."],
+    [5,"Sangat Tinggi","Dampak biaya > USD 30 Juta; keterlambatan > 6 bulan/mengancam kegagalan COD & NPV proyek."],
+  ],
+  ews: [
+    {p:"Salt Inventory (hari ketahanan)", thr:"Min. 30 hari", thrVal:30, val:24, unit:" hari", impl:"Menimbulkan risiko penghentian mendadak kiln kalsinasi akibat keterlambatan kapal bersandar."},
+    {p:"Procurement Progress", thr:"Min. 80%", thrVal:80, val:73, unit:"%", impl:"Menunda kedatangan material pemipaan di area penukar panas utama."},
+    {p:"Project SPI", thr:"SPI ≥ 1,00", thrVal:1.00, val:0.94, unit:"", impl:"Proyek terlambat 6% dari baseline rencana, mengancam target penyelesaian Maret 2028."},
+    {p:"Supplier Qualification", thr:"100% terverifikasi", thrVal:100, val:75, unit:"%", impl:"Garam domestik berisiko kadar kalsium tinggi, berpotensi menyumbat tower karbonasi."},
+    {p:"Commissioning Readiness", thr:"Min. 60%", thrVal:60, val:42, unit:"%", impl:"Menunda masa uji coba fungsional alat berputar dan utilitas utama di ISBL."},
+    {p:"Product Qualification", thr:"Min. 50%", thrVal:50, val:40, unit:"%", impl:"Potensi penolakan serapan pasar untuk aplikasi industri kaca lembaran (produk premium)."},
+  ],
+  actions: [
+    {no:1, isu:"Ketergantungan Antarmuka (Interface) Lintas EPC-A, B, C, D", kat:"Eksekusi", lvl:"High",
+     keput:"Mengesahkan pembentukan tim Interface Coordinator dan menerapkan Interface Management Plan (IMP) yang mengikat seluruh kontraktor; menyelaraskan jadwal desain Rekind dengan kemajuan ISBL EPC-A.",
+     pic:"VP Proyek Soda Ash &amp; SVP Pengembangan Portofolio",
+     dampak:"Mencegah kegagalan penyelesaian proyek bersamaan; mengamankan target COD Maret 2028; melindungi NPV USD 77,60 Juta."},
+    {no:2, isu:"Keterbatasan Kapasitas Keuangan Rekind (EPC-B)", kat:"Finansial", lvl:"Moderate to High",
+     keput:"Memberikan dispensasi perpanjangan jaminan pelaksanaan secara terkendali; meminta Parent Company Guarantee dari PT Pupuk Indonesia (Persero).",
+     pic:"Direktur Utama PKT &amp; SVP Keuangan",
+     dampak:"Melindungi penyelesaian gardu kelistrikan &amp; fasilitas tie-in; menghindari denda klaim tambahan dari EPC-A."},
+    {no:3, isu:"Kelangkaan &amp; Hambatan Perizinan Impor Garam Industri", kat:"Hulu / Supply", lvl:"Moderate to High",
+     keput:"Lobi aktif dengan Kementerian Perindustrian &amp; Kementerian Kelautan dan Perikanan untuk kuota impor tahunan, merujuk Perpres No.17/2025.",
+     pic:"Direktur Utama PKT &amp; SVP Pengembangan Portofolio",
+     dampak:"Menghindari penghentian operasional akibat kekosongan bahan baku; menghemat potensi kerugian EBITDA Rp 137 Miliar/kuartal."},
+    {no:4, isu:"Fluktuasi Nilai Tukar Valas atas Sisa Pembayaran Kontrak EPC-A", kat:"Keuangan", lvl:"Moderate",
+     keput:"Mengimplementasikan strategi hedging valas (forward/opsi) bersama bank BUMN nasional untuk mengunci porsi sisa pembayaran USD.",
+     pic:"Direktur Keuangan PKT",
+     dampak:"Mengeliminasi risiko pembengkakan biaya investasi riil; mengamankan ambang batas investasi USD 297,67 Juta."},
+    {no:5, isu:"Hambatan Penerbitan PBG &amp; SLF di Lahan Tursina Barat", kat:"Regulasi", lvl:"Moderate",
+     keput:"Membentuk tim percepatan perizinan internal untuk koordinasi harian dengan DLH Kota Bontang &amp; Dinas PUPR Provinsi Kaltim.",
+     pic:"VP Hukum &amp; Humas PKT",
+     dampak:"Mencegah keterlambatan masa efektif konstruksi; menghemat opportunity cost of capital Rp 500 Juta/bulan."},
+  ]
+};
+
+/* ============ CONSTANTS / HELPERS ============ */
+const RISK5 = ["Low","Low to Moderate","Moderate","Moderate to High","High"];
+const RISK5_COLOR = {"Low":"#538135","Low to Moderate":"#A9D18E","Moderate":"#FFD966","Moderate to High":"#F4B183","High":"#E06666"};
+const risk5FromIndex0_100 = s => s<=20?"Low": s<=44?"Low to Moderate": s<=60?"Moderate": s<=76?"Moderate to High":"High";
+const ragColor = v => v>=90?"var(--green)": v>=75?"var(--yellow)": v>=60?"var(--amber)":"var(--red)";
+const ragLabel = v => v>=90?"HIJAU - SEHAT": v>=75?"KUNING - PANTAU": v>=60?"ORANYE - WASPADA":"MERAH - KRITIS";
+const wavg = (items, weights) => items.reduce((s,[,v],i)=>s+v*weights[i],0);
+
+// Non-linear 5x5 risk scale (Skala 1-25): key "L-C" -> Skala.
+// Prioritizes Consequence over Likelihood for tied combinations — see
+// sheet Referensi_Threshold bagian 10 pada file Excel untuk rujukan lengkap.
+const SCALE_LOOKUP = {
+  "1-1":1,"2-1":2,"3-1":3,"4-1":4,"1-2":5,
+  "2-2":6,"5-1":7,"3-2":8,"4-2":9,"1-3":10,
+  "2-3":11,"5-2":12,"3-3":13,"4-3":14,"1-4":15,
+  "2-4":16,"5-3":17,"3-4":18,"4-4":19,"1-5":20,
+  "2-5":21,"5-4":22,"3-5":23,"4-5":24,"5-5":25,
+};
+const scaleFromLC = (L,C) => SCALE_LOOKUP[`${L}-${C}`];
+const risk5FromScale = s => s<=5?"Low": s<=11?"Low to Moderate": s<=15?"Moderate": s<=19?"Moderate to High":"High";
+
+// EWS 3-status: Aman / Waspada / Bahaya, buffer toleransi 10% dari threshold
+// (COSO ERM 2017 KRI Traffic Light & praktik RCSA-KRI Pertamina).
+const ewsStatus = e => e.val>=e.thrVal ? "Aman" : (e.val>=e.thrVal*0.9 ? "Waspada" : "Bahaya");
+const EWS_STATUS_COLOR = {"Aman":"var(--green)","Waspada":"var(--yellow)","Bahaya":"var(--red)"};
+const EWS_STATUS_TEXT = {"Aman":"#fff","Waspada":"#5C4300","Bahaya":"#fff"};
+
+let DERIVED = {};
+function computeDerived(){
+  const SRI = wavg(DATA.sri.items, DATA.sri.weights);
+  const PEI = wavg(DATA.pei.items, DATA.pei.weights);
+  const CRI = wavg(DATA.cri.items, DATA.cri.weights);
+  const CPI = DATA.evm.ev/DATA.evm.ac, SPI = DATA.evm.ev/DATA.evm.pv;
+  const CV = DATA.evm.ev-DATA.evm.ac, SV = DATA.evm.ev-DATA.evm.pv;
+  const finScore = CPI>=1?100:CPI*100, schedScore = SPI>=1?100:SPI*100;
+  const PHS = (finScore*.2)+(schedScore*.2)+(SRI*.2)+(PEI*.2)+(CRI*.2);
+  const RISKIDX = DATA.riskIndex.supply*.4 + DATA.riskIndex.execution*.4 + DATA.riskIndex.commercial*.2;
+  const RISKLVL = risk5FromIndex0_100(RISKIDX);
+  DATA.topRisks.forEach(r=>{ r.score = scaleFromLC(r.L, r.C); r.level = risk5FromScale(r.score); });
+  DERIVED = {SRI,PEI,CRI,CPI,SPI,CV,SV,PHS,RISKIDX,RISKLVL};
+}
+
+/* ============ RENDER (idempotent — safe to call repeatedly) ============ */
+function render(){
+  const {SRI,PEI,CRI,CPI,SPI,CV,SV,PHS,RISKIDX,RISKLVL} = DERIVED;
+
+  document.getElementById('periodLine').textContent = `Reporting Period: ${DATA.period}`;
+  document.getElementById('statusPill').textContent = `STATUS: ${DATA.status}`;
+
+  drawGauge(document.getElementById('phsGauge'), PHS);
+  document.getElementById('phsNum').textContent = PHS.toFixed(2)+'%';
+  const phsChip = document.getElementById('phsChip');
+  phsChip.textContent = ragLabel(PHS);
+  phsChip.style.background = ragColor(PHS);
+  phsChip.style.color = '#fff';
+
+  const subEl = document.getElementById('subIndexBars'); subEl.innerHTML='';
+  [['Supply Readiness (SRI)',SRI],['Project Execution (PEI)',PEI],['Commercial Readiness (CRI)',CRI]].forEach(([label,val])=>{
+    subEl.innerHTML += `<div class="bar-row" style="margin-bottom:9px;">
+      <div class="kv"><span class="k">${label}</span><span class="v" style="font-size:13px;">${val.toFixed(2)}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${val}%;background:${ragColor(val)};"></div></div></div>`;
+  });
+
+  const finEl = document.getElementById('finKV'); finEl.innerHTML='';
+  [['CPI', CPI.toFixed(2), ragColor(CPI*100)],['SPI', SPI.toFixed(2), ragColor(SPI*100)],
+   ['CV (USD Juta)', (CV>=0?'+':'')+CV.toFixed(2), CV>=0?'var(--green)':'var(--red)'],
+   ['SV (USD Juta)', (SV>=0?'+':'')+SV.toFixed(2), SV>=0?'var(--green)':'var(--red)']].forEach(([k,v,c])=>{
+    finEl.innerHTML += `<div class="kv" style="padding:3px 0;"><span class="k">${k}</span><span class="v" style="color:${c};">${v}</span></div>`;
+  });
+
+  const curveEl = document.getElementById('scurveChart'); curveEl.innerHTML='';
+  const cmax = Math.max(DATA.evm.pv, DATA.evm.ev, DATA.evm.ac);
+  [['Planned Value (PV)',DATA.evm.pv,'#8B96AA'],['Earned Value (EV)',DATA.evm.ev,'#FF6A13'],['Actual Cost (AC)',DATA.evm.ac,'#2E9B57']].forEach(([label,val,c])=>{
+    curveEl.innerHTML += `<div class="bar-row" style="margin-bottom:7px;">
+      <div class="kv"><span class="k">${label}</span><span class="v" style="font-size:12px;">${val.toFixed(1)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(val/cmax*100)}%;background:${c};"></div></div></div>`;
+  });
+
+  document.getElementById('riskLevelText').textContent = RISKLVL;
+  document.getElementById('riskLevelText').style.color = RISK5_COLOR[RISKLVL];
+  document.getElementById('riskScoreText').textContent = `Skor Komposit: ${RISKIDX.toFixed(2)} / 100`;
+
+  const heatEl = document.getElementById('heatmap'); heatEl.innerHTML='';
+  let heatHTML='';
+  const darkBgLevels = new Set(["Low","High"]); // solid dark-green / red backgrounds need white text
+  for(let imp=5; imp>=1; imp--){
+    for(let prob=1; prob<=5; prob++){
+      const scale = scaleFromLC(prob, imp);
+      const lvl = risk5FromScale(scale);
+      const marker = DATA.topRisks.find(r=>r.C===imp && r.L===prob);
+      const txtColor = darkBgLevels.has(lvl) ? '#FFFFFF' : '#0C2038';
+      heatHTML += `<div class="hcell" style="background:${RISK5_COLOR[lvl]};border:1px solid ${RISK5_COLOR[lvl]};color:${txtColor};" title="L=${prob}, C=${imp}, Skala=${scale} (${lvl})">${marker?marker.code:''}</div>`;
+    }
+  }
+  heatEl.innerHTML = heatHTML;
+
+  const cntEl = document.getElementById('riskCounts'); cntEl.innerHTML='';
+  const totalRisk = DATA.riskCounts.high+DATA.riskCounts.moderateToHigh+DATA.riskCounts.moderate+DATA.riskCounts.lowToModerate+DATA.riskCounts.low;
+  [['High',DATA.riskCounts.high,RISK5_COLOR['High']],
+   ['Moderate to High',DATA.riskCounts.moderateToHigh,RISK5_COLOR['Moderate to High']],
+   ['Moderate',DATA.riskCounts.moderate,RISK5_COLOR['Moderate']],
+   ['Low to Moderate',DATA.riskCounts.lowToModerate,RISK5_COLOR['Low to Moderate']],
+   ['Low',DATA.riskCounts.low,RISK5_COLOR['Low']]].forEach(([k,v,c])=>{
+    cntEl.innerHTML += `<div class="kv" style="padding:2px 0;"><span class="k"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};margin-right:6px;"></i>${k}</span><span class="v" style="font-size:13px;">${v}</span></div>`;
+  });
+  cntEl.innerHTML += `<div class="kv" style="padding-top:5px;margin-top:3px;border-top:1px solid var(--cell-border);"><span class="k">Total Aktif</span><span class="v">${totalRisk}</span></div>`;
+
+  const mitEl = document.getElementById('mitigationBars'); mitEl.innerHTML='';
+  [['Completed', DATA.mitigation.completed,'var(--green)'],['On Track', DATA.mitigation.onTrack,'var(--yellow)'],
+   ['Overdue', DATA.mitigation.overdue,'var(--red)']].forEach(([k,v,c])=>{
+    mitEl.innerHTML += `<div class="bar-row" style="margin-bottom:6px;">
+      <div class="kv"><span class="k">${k}</span><span class="v" style="font-size:12px;">${v.toFixed(2)}%</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v}%;background:${c};"></div></div></div>`;
+  });
+  mitEl.innerHTML += `<div class="kv" style="padding-top:2px;"><span class="k">Need Escalation</span><span class="v" style="color:var(--red);">${DATA.mitigation.escalations} aksi</span></div>`;
+
+  const scaleTableEl = document.getElementById('scaleTable'); scaleTableEl.innerHTML='';
+  const scaleRows = Object.keys(SCALE_LOOKUP).map(k=>{
+    const [L,C] = k.split('-').map(Number);
+    return {L, C, scale: SCALE_LOOKUP[k]};
+  }).sort((a,b)=>a.scale-b.scale);
+  scaleRows.forEach(row=>{
+    const lvl = risk5FromScale(row.scale);
+    const dark = (lvl==="Low"||lvl==="High") ? '#fff' : '#0C2038';
+    scaleTableEl.innerHTML += `<tr><td style="text-align:center;">${row.L}</td><td style="text-align:center;">${row.C}</td>
+      <td style="text-align:center;"><b>${row.scale}</b></td>
+      <td><span class="tag" style="background:${RISK5_COLOR[lvl]};color:${dark};">${lvl}</span></td></tr>`;
+  });
+
+  const ewsRowEl = document.getElementById('ewsRow'); ewsRowEl.innerHTML='';
+  DATA.ews.forEach(e=>{
+    const st = ewsStatus(e);
+    const col = EWS_STATUS_COLOR[st];
+    ewsRowEl.innerHTML += `<div class="ews-chip" style="border-left-color:${col};">
+      <div class="p">${e.p}</div><div class="a">${e.val}${e.unit}</div><div class="t">Threshold: ${e.thr}</div>
+      <span class="stlabel" style="background:${col};color:${EWS_STATUS_TEXT[st]};">${st.toUpperCase()}</span></div>`;
+  });
+
+  const formulaGrid = document.getElementById('formulaGrid'); formulaGrid.innerHTML='';
+  const formulas = [
+    ["Financial Health","CPI = EV / AC<br>CV = EV − AC","Earned Value Management (EVM) — mengukur efisiensi biaya proyek."],
+    ["Schedule Health","SPI = EV / PV<br>SV = EV − PV","EVM — mengukur kepatuhan durasi terhadap master schedule baseline."],
+    ["Supply Readiness (SRI)","SRI = Σ (Wᵢ × Sᵢ)","5 parameter tertimbang: Salt Contract 25%, Salt Inventory 20%, Supplier Qualification 20%, Shipping Readiness 20%, Utility Readiness 15%."],
+    ["Project Execution (PEI)","PEI = Σ (Pⱼ × Wⱼ)","4 parameter tertimbang: Engineering 25%, Procurement 30%, Construction 35%, Commissioning Prep 10%."],
+    ["Commercial Readiness (CRI)","CRI = Σ (Wₖ × Sₖ)","5 parameter tertimbang: Offtake 20%, Marketing 20%, Distribution 15%, Operation Team 20%, Product Qualification 25%."],
+    ["Overall Health (PHS)","PHS = (Fin×0,2)+(Sched×0,2)+(SRI×0,2)+(PEI×0,2)+(CRI×0,2)","Skor Fin/Sched dikonversi dari CPI/SPI (dibatasi maksimal 100 bila indeks ≥1,00)."],
+    ["Overall Risk Index","Idx = (Supply×0,4)+(Exec×0,4)+(Commercial×0,2)","Skala 0–100, benchmark Pertamina; diklasifikasi ke 5 tingkat risiko PKT.<br><br><div class=\"footnote\" style=\"margin-top:4px;\">0–20 = Low | 21–44 = Low to Moderate | 45–60 = Moderate | 61–76 = Moderate to High | 77–100 = High</div>"],
+    ["Risk Matriks 5x5 (Top Risk)","Skala = Tabel Skala Risiko Non-Linear 5x5 (bukan L × C sederhana)","Rentang 1–25; diklasifikasi ke 5 tingkat: Low(1-5), Low to Moderate(6-11), Moderate(12-15), Moderate to High(16-19), High(20-25). Memprioritaskan Consequence dibanding Likelihood untuk nilai sama — lihat sheet Excel Referensi_Threshold bagian 10."],
+    ["Early Warning System (EWS)","Status = Aman / Waspada / Bahaya (buffer 10% dari threshold)","Aman: Aktual ≥ Threshold. Waspada: Threshold×90% ≤ Aktual &lt; Threshold. Bahaya: Aktual &lt; Threshold×90% — mengacu COSO ERM 2017 &amp; RCSA-KRI Pertamina, lihat sheet Excel Referensi_Threshold bagian 11."],
+    ["Jumlah Register Risiko Aktif","Risiko dikategorikan ke 5 tingkat risiko PKT berdasarkan skala L × C","Setiap risiko dalam register diklasifikasi menjadi:<br>• <b>Low</b> (Skala 1–5)<br>• <b>Low to Moderate</b> (Skala 6–11)<br>• <b>Moderate</b> (Skala 12–15)<br>• <b>Moderate to High</b> (Skala 16–19)<br>• <b>High</b> (Skala 20–25)<br>Mengikuti nomenklatur Pedoman Manajemen Risiko PKT."],
+  ];
+  formulas.forEach(([t,f,d])=>{ formulaGrid.innerHTML += `<div class="formula-card"><h4>${t}</h4><code>${f}</code><p>${d}</p></div>`; });
+
+  // Tambahkan section khusus: Metodologi Perhitungan Sub-Indeks Risiko
+  formulaGrid.innerHTML += `
+  <div class="formula-card" style="grid-column:1/-1;border-left:4px solid var(--orange);">
+    <h4 style="font-size:13px;">📊 Cara Mendapatkan Angka Sub-Indeks Risiko (Supply / Execution / Commercial Risk Index)</h4>
+    <p style="font-size:11px;line-height:1.7;color:var(--text-mid);">
+      Masing-masing sub-indeks risiko (<b>Supply Risk Index</b>, <b>Execution Risk Index</b>, <b>Commercial Risk Index</b>) dihitung secara terpisah melalui <b>metode penilaian pakar (expert scoring)</b> pada skala 0–100. Berikut penjelasan setiap sub-indeks:<br><br>
+      <b>1. Supply Risk Index</b> — Mengukur tingkat risiko rantai pasokan bahan baku proyek.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: ketersediaan kontrak garam jangka panjang, stabilitas harga, keandalan pemasok, kapasitas logistik &amp; pelabuhan, serta regulasi impor garam (Perpres 17/2025).<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (pasokan sepenuhnya terjamin), <b>Skor 100</b> = risiko sangat tinggi (pasokan tidak tersedia).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D41</b>.<br><br>
+      <b>2. Execution Risk Index</b> — Mengukur tingkat risiko pelaksanaan proyek EPC.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: progres konstruksi vs jadwal, performa kontraktor, isu interface antar EPC packages, kesiapan commissioning, ketersediaan sumber daya, serta kendala perizinan.<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (eksekusi sempurna), <b>Skor 100</b> = risiko sangat tinggi (proyek terhenti).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D42</b>.<br><br>
+      <b>3. Commercial Risk Index</b> — Mengukur tingkat risiko komersial &amp; pemasaran produk soda ash.<br>
+      &nbsp;&nbsp;&nbsp;• Dinilai berdasarkan: offtake agreement, strategi pemasaran, kesiapan distribusi, kualifikasi produk, serta persaingan impor.<br>
+      &nbsp;&nbsp;&nbsp;• <b>Skor 0</b> = risiko sangat rendah (pasar terjamin), <b>Skor 100</b> = risiko sangat tinggi (pasar tidak tersedia).<br>
+      &nbsp;&nbsp;&nbsp;• Input diisi pada sheet <i>Input_Bulanan</i> sel <b>D43</b>.<br><br>
+      <b>Overall Risk Index</b> kemudian dihitung sebagai rata-rata tertimbang:<br>
+      <code style="display:inline;background:#fff;border:1px solid var(--cell-border);padding:3px 8px;border-radius:4px;font-size:11px;">Overall Risk Index = (Supply × 0,4) + (Execution × 0,4) + (Commercial × 0,2)</code><br><br>
+      Bobot mencerminkan bahwa pada tahap konstruksi, risiko pasokan &amp; eksekusi memiliki dampak dominan terhadap keberhasilan proyek. Hasilnya diklasifikasi ke 5 tingkat risiko PKT:<br>
+      • <b>0–20</b> = Low &nbsp;|&nbsp; <b>21–40</b> = Low to Moderate &nbsp;|&nbsp; <b>41–60</b> = Moderate &nbsp;|&nbsp; <b>61–80</b> = Moderate to High &nbsp;|&nbsp; <b>81–100</b> = High
+    </p>
+  </div>`;
+
+  const lcTable = document.getElementById('lcCriteriaTable'); lcTable.innerHTML='';
+  for(let i=0;i<5;i++){
+    const [lv,lk,ld] = DATA.likelihoodCriteria[i];
+    const [cv,ck,cd] = DATA.consequenceCriteria[i];
+    lcTable.innerHTML += `<tr><td><b>${lv}</b></td><td><b>${lk}</b><br><span style="font-size:10.5px;">${ld}</span></td>
+      <td><b>${cv}</b></td><td><b>${ck}</b><br><span style="font-size:10.5px;">${cd}</span></td></tr>`;
+  }
+
+  const rrTable = document.getElementById('riskRegisterTable'); rrTable.innerHTML='';
+  DATA.topRisks.forEach(r=>{
+    rrTable.innerHTML += `<tr><td><span class="tag" style="background:var(--navy-soft);">${r.code}</span></td>
+      <td><b>${r.desc}</b></td><td>${r.kat}</td><td style="text-align:center;">${r.L}</td><td style="text-align:center;">${r.C}</td>
+      <td style="text-align:center;"><b>${r.score}</b></td><td><span class="tag" style="background:${RISK5_COLOR[r.level]};">${r.level}</span></td></tr>`;
+  });
+  const risk5LegendEl = document.getElementById('risk5Legend'); risk5LegendEl.innerHTML='';
+  RISK5.forEach(lvl=>{ risk5LegendEl.innerHTML += `<span><i style="background:${RISK5_COLOR[lvl]};"></i>${lvl}</span>`; });
+
+  const actionTableEl = document.getElementById('actionTable'); actionTableEl.innerHTML='';
+  DATA.actions.forEach(a=>{
+    actionTableEl.innerHTML += `<tr><td>${a.no}</td><td><b>${a.isu}</b></td>
+      <td><span class="tag" style="background:${RISK5_COLOR[a.lvl]};">${a.kat} · ${a.lvl}</span></td>
+      <td>${a.keput}</td><td>${a.pic}</td><td>${a.dampak}</td></tr>`;
+  });
+
+  const ewsTableEl = document.getElementById('ewsTable'); ewsTableEl.innerHTML='';
+  DATA.ews.forEach(e=>{
+    const st = ewsStatus(e);
+    const dot = (lvl) => lvl===st ? `<span class="dot" style="background:${EWS_STATUS_COLOR[lvl]};"></span>` : '';
+    ewsTableEl.innerHTML += `<tr><td><b>${e.p}</b></td><td>${e.thr}</td><td>${e.val}${e.unit}</td>
+      <td class="ews-3col">${dot('Aman')}</td><td class="ews-3col">${dot('Waspada')}</td><td class="ews-3col">${dot('Bahaya')}</td>
+      <td>${e.impl}</td></tr>`;
+  });
+
+  const rmGrid = document.getElementById('riskMovementGrid'); rmGrid.innerHTML='';
+  [["Risiko Baru", DATA.riskMovement.baru, "Perubahan tarif pajak masukan impor garam industri; sengketa lahan tambahan area laydown."],
+   ["Risiko Eskalasi", DATA.riskMovement.eskalasi, "Peningkatan level risiko keterlambatan Rekind akibat kendala arus kas internal."],
+   ["Risiko Menurun", DATA.riskMovement.menurun, "Penurunan risiko dampak sosial setelah disepakati kuota tenaga kerja lokal."],
+   ["Risiko Ditutup", DATA.riskMovement.ditutup, "Penutupan risiko AMDAL seiring izin adendum lingkungan DLH Bontang."]].forEach(([t,v,d])=>{
+    rmGrid.innerHTML += `<div class="formula-card"><h4>${t} = ${v}</h4><p>${d}</p></div>`;
+  });
+}
+
+function drawGauge(el, value){
+  const cx=75, cy=88, r=64;
+  const zones=[[0,60,'#C0392B'],[60,75,'#E4622E'],[75,90,'#E8B93A'],[90,100,'#2E9B57']];
+  const toXY = pct => { const a = Math.PI - (pct/100)*Math.PI; return [cx+r*Math.cos(a), cy-r*Math.sin(a)]; };
+  let svg = '';
+  zones.forEach(([a,b,c])=>{
+    const [x1,y1]=toXY(a), [x2,y2]=toXY(b);
+    const large = 0; // each zone spans <=180deg (100pct) of the semicircle, so always the minor arc
+    svg += `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}" stroke="${c}" stroke-width="11" fill="none" opacity="0.92"/>`;
+  });
+  const ang = Math.PI - (Math.min(value,100)/100)*Math.PI;
+  const nx = cx + (r-14)*Math.cos(ang), ny = cy - (r-14)*Math.sin(ang);
+  svg += `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="#0B1F3A" stroke-width="2.5" stroke-linecap="round"/>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="4.5" fill="#0B1F3A"/>`;
+  el.innerHTML = svg;
+}
+
+/* ============ IMPORT FROM EXCEL (SheetJS) ============
+   Peta sel mengikuti struktur sheet "Input_Bulanan" pada
+   Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.xlsx */
+function cellVal(ws, addr){
+  const c = ws[addr];
+  return c ? c.v : undefined;
+}
+function importFromWorkbook(wb){
+  const ws = wb.Sheets['Input_Bulanan'];
+  if(!ws){ alert('Sheet "Input_Bulanan" tidak ditemukan di file ini. Pastikan menggunakan file Dashboard_Risiko_Kesehatan_Proyek_Soda_Ash_PKT.xlsx yang sesuai.'); return false; }
+  const pct = v => (v===undefined||v===null) ? undefined : v*100;
+
+  DATA.period = cellVal(ws,'D5') ?? DATA.period;
+  DATA.status = cellVal(ws,'F5') ?? DATA.status;
+
+  DATA.evm.pv = cellVal(ws,'D8') ?? DATA.evm.pv;
+  DATA.evm.ev = cellVal(ws,'D9') ?? DATA.evm.ev;
+  DATA.evm.ac = cellVal(ws,'D10') ?? DATA.evm.ac;
+
+  const sriAddr = ['D17','D18','D19','D20','D21'];
+  DATA.sri.items = DATA.sri.labels.map((lab,i)=>[lab, pct(cellVal(ws,sriAddr[i])) ?? DATA.sri.items[i][1]]);
+
+  const peiAddr = ['D25','D26','D27','D28'];
+  DATA.pei.items = DATA.pei.labels.map((lab,i)=>[lab, pct(cellVal(ws,peiAddr[i])) ?? DATA.pei.items[i][1]]);
+
+  const criAddr = ['D33','D34','D35','D36','D37'];
+  DATA.cri.items = DATA.cri.labels.map((lab,i)=>[lab, pct(cellVal(ws,criAddr[i])) ?? DATA.cri.items[i][1]]);
+
+  DATA.riskIndex.supply = cellVal(ws,'D41') ?? DATA.riskIndex.supply;
+  DATA.riskIndex.execution = cellVal(ws,'D42') ?? DATA.riskIndex.execution;
+  DATA.riskIndex.commercial = cellVal(ws,'D43') ?? DATA.riskIndex.commercial;
+
+  DATA.riskCounts.high = cellVal(ws,'D48') ?? DATA.riskCounts.high;
+  DATA.riskCounts.moderateToHigh = cellVal(ws,'D49') ?? DATA.riskCounts.moderateToHigh;
+  DATA.riskCounts.moderate = cellVal(ws,'D50') ?? DATA.riskCounts.moderate;
+  DATA.riskCounts.lowToModerate = cellVal(ws,'D51') ?? DATA.riskCounts.lowToModerate;
+  DATA.riskCounts.low = cellVal(ws,'D52') ?? DATA.riskCounts.low;
+
+  DATA.mitigation.completed = pct(cellVal(ws,'D56')) ?? DATA.mitigation.completed;
+  DATA.mitigation.overdue = pct(cellVal(ws,'D57')) ?? DATA.mitigation.overdue;
+  DATA.mitigation.onTrack = pct(cellVal(ws,'D58')) ?? DATA.mitigation.onTrack;
+  DATA.mitigation.escalations = cellVal(ws,'D59') ?? DATA.mitigation.escalations;
+
+  DATA.riskMovement.baru = cellVal(ws,'F56') ?? DATA.riskMovement.baru;
+  DATA.riskMovement.eskalasi = cellVal(ws,'F57') ?? DATA.riskMovement.eskalasi;
+  DATA.riskMovement.menurun = cellVal(ws,'F58') ?? DATA.riskMovement.menurun;
+  DATA.riskMovement.ditutup = cellVal(ws,'F59') ?? DATA.riskMovement.ditutup;
+
+  const ewsAddr = ['E63','E64','E65','E66','E67','E68'];
+  const ewsThrAddr = ['F63','F64','F65','F66','F67','F68'];
+  DATA.ews.forEach((e,i)=>{
+    const raw = cellVal(ws, ewsAddr[i]);
+    if(raw!==undefined) e.val = (e.unit==='%') ? Math.round(raw*10000)/100 : raw;
+    const rawThr = cellVal(ws, ewsThrAddr[i]);
+    if(rawThr!==undefined) e.thrVal = (e.unit==='%') ? Math.round(rawThr*10000)/100 : rawThr;
+  });
+
+  const riskRows = [74,75,76,77];
+  DATA.topRisks.forEach((r,i)=>{
+    const row = riskRows[i];
+    r.code = cellVal(ws, 'C'+row) ?? r.code;
+    r.desc = cellVal(ws, 'D'+row) ?? r.desc;
+    r.kat = cellVal(ws, 'E'+row) ?? r.kat;
+    r.L = cellVal(ws, 'F'+row) ?? r.L;
+    r.C = cellVal(ws, 'G'+row) ?? r.C;
+  });
+
+  return true;
+}
+
+let syncHandle = null;
+let lastModified = 0;
+let syncInterval = null;
+
+async function doAutoSync() {
+  if (!syncHandle) return;
+  try {
+    const file = await syncHandle.getFile();
+    if (file.lastModified > lastModified) {
+      lastModified = file.lastModified;
+      const arrayBuffer = await file.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      const wb = XLSX.read(data, {type:'array', cellFormula:false});
+      if(importFromWorkbook(wb)){
+        localStorage.setItem('sodaAshDashboardData', JSON.stringify(DATA));
+        localStorage.setItem('sodaAshDashboardTime', new Date().toLocaleTimeString('id-ID'));
+        computeDerived();
+        render();
+        const st = document.getElementById('importStatus');
+        st.innerHTML = `<span style="color:var(--green)">✓ Auto-Sync: ${file.name} (${new Date().toLocaleTimeString('id-ID')})</span>`;
+      }
+    }
+  } catch(err) {
+    console.error("Auto-sync error:", err);
+  }
+}
+
+document.getElementById('btnImport').addEventListener('click', async () => {
+  if ('showOpenFilePicker' in window) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'Excel Files', accept: {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']} }],
+        multiple: false
+      });
+      syncHandle = handle;
+      
+      const file = await syncHandle.getFile();
+      lastModified = file.lastModified;
+      const arrayBuffer = await file.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      const wb = XLSX.read(data, {type:'array', cellFormula:false});
+      
+      if (importFromWorkbook(wb)) {
+        localStorage.setItem('sodaAshDashboardData', JSON.stringify(DATA));
+        localStorage.setItem('sodaAshDashboardTime', new Date().toLocaleTimeString('id-ID'));
+        computeDerived();
+        render();
+        document.getElementById('importStatus').innerHTML = `<span style="color:var(--green)">✓ Auto-Sync: ${file.name} (${new Date().toLocaleTimeString('id-ID')})</span>`;
+        document.getElementById('syncNote').innerHTML = '<span style="color:var(--green);font-weight:bold;">⬤ AUTO-SYNC AKTIF</span> — silakan bekerja dan save di Excel, dashboard akan otomatis terupdate tanpa perlu klik lagi.';
+        
+        if (syncInterval) clearInterval(syncInterval);
+        syncInterval = setInterval(doAutoSync, 1500); // Check every 1.5 seconds
+      }
+    } catch(err) {
+      if (err.name !== 'AbortError') {
+        // Fallback if permission denied or error
+        document.getElementById('fileInput').click(); 
+      }
+    }
+  } else {
+    // Fallback for older browsers
+    document.getElementById('fileInput').click();
+  }
+});
+
+// Fallback logic for manual import
+document.getElementById('fileInput').addEventListener('change', (evt)=>{
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellFormula:false});
+      if(importFromWorkbook(wb)){
+        localStorage.setItem('sodaAshDashboardData', JSON.stringify(DATA));
+        localStorage.setItem('sodaAshDashboardTime', new Date().toLocaleTimeString('id-ID'));
+        computeDerived();
+        render();
+        document.getElementById('importStatus').textContent = `✓ Sinkron: ${file.name} (${new Date().toLocaleTimeString('id-ID')})`;
+        document.getElementById('syncNote').textContent = 'PKT · Soda Ash Project — data tersinkron manual dari Excel.';
+      }
+    }catch(err){
+      alert('Gagal membaca file Excel: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ============ EXPORT: PNG / JPG / PDF ============ */
+async function captureStage(){
+  return await html2canvas(document.getElementById('stage'), {scale:2, backgroundColor:'#ffffff', useCORS:true});
+}
+function downloadCanvas(canvas, filename, type, quality){
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL(type, quality);
+  link.click();
+}
+document.getElementById('btnPng').addEventListener('click', async ()=>{
+  const canvas = await captureStage();
+  downloadCanvas(canvas, 'PKT_Soda_Ash_Dashboard.png', 'image/png');
+});
+document.getElementById('btnJpg').addEventListener('click', async ()=>{
+  const canvas = await captureStage();
+  downloadCanvas(canvas, 'PKT_Soda_Ash_Dashboard.jpg', 'image/jpeg', 0.95);
+});
+document.getElementById('btnPdf').addEventListener('click', async ()=>{
+  const canvas = await captureStage();
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'landscape', unit:'px', format:[canvas.width, canvas.height]});
+  pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+  pdf.save('PKT_Soda_Ash_Dashboard.pdf');
+});
+
+/* ============ INIT ============ */
+const savedData = localStorage.getItem('sodaAshDashboardData');
+if (savedData) {
+  try {
+    const parsed = JSON.parse(savedData);
+    // Overwrite default DATA with cached data
+    Object.assign(DATA, parsed);
+    const savedTime = localStorage.getItem('sodaAshDashboardTime') || '';
+    document.getElementById('syncNote').innerHTML = `PKT · Soda Ash Project — Memuat rekaman data terakhir <span style="color:var(--amber)">(${savedTime})</span>. Klik "Aktifkan Auto-Sync" jika ada perubahan baru.`;
+  } catch(e) { console.error("Failed to load cached data", e); }
+}
+
+computeDerived();
+render();
+</script>
+
+
+</body></html>
