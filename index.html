@@ -2,7 +2,7 @@
 <!-- saved from url=(0149)file:///C:/Users/Farhans-WINDOWS/OneDrive%20-%20Perusahaan X (Mockup Only)/Manajemen%20Risiko%20Korporasi/PROJECT/Proyek/Dashboard_Risiko_Kesehatan_Proyek_Proyek_X.html -->
 <html lang="id"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-<title>Project Risk &amp; Health Dashboard — Proyek X Perusahaan X</title>
+<title>Project Risk &amp; Health Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -174,8 +174,8 @@ td b{color:var(--navy);}
 <div class="stage" id="stage">
   <div class="titlebar">
     <div>
-      <div class="eyebrow">Perusahaan X · PROYEK X (300.000 MTPY)</div>
-      <h1>PROJECT RISK &amp; HEALTH DASHBOARD</h1>
+      <div class="eyebrow" id="eyebrowText">Perusahaan X · PROYEK X (300.000 MTPY)</div>
+      <h1 id="headerTitle">PROJECT RISK &amp; HEALTH DASHBOARD</h1>
       <div class="sub" id="periodLine">Reporting Period: Agustus 2026</div>
     </div>
     <div class="status-pill" id="statusPill">STATUS: DRAFT</div>
@@ -480,6 +480,8 @@ td b{color:var(--navy);}
    saat pengguna melakukan Import Excel Bulanan.
 ========================================================================= */
 let DATA = {
+  companyName: "Perusahaan X",
+  projectName: "Proyek X",
   period: "Maret 2026",
   status: "DRAFT",
   evm: { pv: 280.8, ev: 264.6, ac: 270.0 },
@@ -590,6 +592,9 @@ function computeDerived(){
 /* ============ RENDER (idempotent — safe to call repeatedly) ============ */
 function render(){
   const {SRI,PEI,CRI,CPI,SPI,CV,SV,PHS,RISKIDX,RISKLVL} = DERIVED;
+  document.getElementById('eyebrowText').textContent = `${DATA.companyName} · ${DATA.projectName.toUpperCase()} (300.000 MTPY)`;
+  document.getElementById('headerTitle').textContent = `PROJECT RISK & HEALTH DASHBOARD - PROYEK ${DATA.projectName.toUpperCase()} ${DATA.companyName.toUpperCase()}`;
+  document.title = `Project Risk & Health Dashboard — ${DATA.projectName} ${DATA.companyName}`;
 
   document.getElementById('periodLine').textContent = `Reporting Period: ${DATA.period}`;
   document.getElementById('statusPill').textContent = `STATUS: ${DATA.status}`;
@@ -796,6 +801,8 @@ function importFromWorkbook(wb){
 
   DATA.period = cellVal(ws,'D5') ?? DATA.period;
   DATA.status = cellVal(ws,'F5') ?? DATA.status;
+  DATA.companyName = cellVal(ws,'D4') ?? DATA.companyName;
+  DATA.projectName = cellVal(ws,'G4') ?? DATA.projectName;
 
   DATA.evm.pv = cellVal(ws,'D8') ?? DATA.evm.pv;
   DATA.evm.ev = cellVal(ws,'D9') ?? DATA.evm.ev;
@@ -932,7 +939,7 @@ document.getElementById('fileInput').addEventListener('change', (evt)=>{
         computeDerived();
         render();
         document.getElementById('importStatus').textContent = `✓ Sinkron: ${file.name} (${new Date().toLocaleTimeString('id-ID')})`;
-        document.getElementById('syncNote').textContent = 'Perusahaan X (Mockup Only) · Proyek X — data tersinkron manual dari Excel.';
+        document.getElementById('syncNote').textContent = `${DATA.companyName} · ${DATA.projectName} — data tersinkron manual dari Excel.`;
       }
     }catch(err){
       alert('Gagal membaca file Excel: '+err.message);
@@ -976,7 +983,7 @@ if (savedData) {
     // Overwrite default DATA with cached data
     Object.assign(DATA, parsed);
     const savedTime = localStorage.getItem('sodaAshDashboardTime') || '';
-    document.getElementById('syncNote').innerHTML = `Perusahaan X (Mockup Only) · Proyek X — Memuat rekaman data terakhir <span style="color:var(--amber)">(${savedTime})</span>. Klik "Muat Data Excel" jika ada perubahan baru.`;
+    document.getElementById('syncNote').innerHTML = `${DATA.companyName} · ${DATA.projectName} — Memuat rekaman data terakhir <span style="color:var(--amber)">(${savedTime})</span>. Klik "Muat Data Excel" jika ada perubahan baru.`;
   } catch(e) { console.error("Failed to load cached data", e); }
 }
 
