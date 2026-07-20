@@ -421,19 +421,7 @@ td b{color:var(--navy);}
     <h2>Tabel Status Peringatan Dini (EWS)</h2>
     <table>
       <thead><tr><th>Parameter</th><th>Threshold</th><th>Aktual</th><th style="width:56px;text-align:center;">Aman</th><th style="width:56px;text-align:center;">Waspada</th><th style="width:56px;text-align:center;">Bahaya</th><th>Implikasi Operasional &amp; Finansial</th></tr></thead>
-      <tbody id="ewsTable"><tr><td><b>Salt Inventory (hari ketahanan)</b></td><td>Min. 30 hari</td><td>24 hari</td>
-      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
-      <td>Menimbulkan risiko penghentian mendadak kiln kalsinasi akibat keterlambatan kapal bersandar.</td></tr><tr><td><b>Procurement Progress</b></td><td>Min. 80%</td><td>73%</td>
-      <td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--yellow);"></span></td><td class="ews-3col"></td>
-      <td>Menunda kedatangan material pemipaan di area penukar panas utama.</td></tr><tr><td><b>Project SPI</b></td><td>SPI ≥ 1,00</td><td>0.94</td>
-      <td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--yellow);"></span></td><td class="ews-3col"></td>
-      <td>Proyek terlambat 6% dari baseline rencana, mengancam target penyelesaian Maret 2028.</td></tr><tr><td><b>Supplier Qualification</b></td><td>100% terverifikasi</td><td>75%</td>
-      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
-      <td>Garam domestik berisiko kadar kalsium tinggi, berpotensi menyumbat tower karbonasi.</td></tr><tr><td><b>Commissioning Readiness</b></td><td>Min. 60%</td><td>42%</td>
-      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
-      <td>Menunda masa uji coba fungsional alat berputar dan utilitas utama di ISBL.</td></tr><tr><td><b>Product Qualification</b></td><td>Min. 50%</td><td>40%</td>
-      <td class="ews-3col"></td><td class="ews-3col"></td><td class="ews-3col"><span class="dot" style="background:var(--red);"></span></td>
-      <td>Potensi penolakan serapan pasar untuk aplikasi industri kaca lembaran (produk premium).</td></tr></tbody>
+      <tbody id="ewsTable"></tbody>
     </table>
     <p style="font-size:9.5px;color:var(--text-dim);margin:8px 0 0;">Metodologi 3-status (Aman/Waspada/Bahaya) menggunakan buffer toleransi 10% dari threshold sebagai batas Waspada (Amber Zone), mengacu pada COSO Enterprise Risk Management Framework (2017) &amp; praktik RCSA-KRI PT Pertamina (Persero). Lihat sheet Excel <i>Referensi_Threshold</i> bagian 11 untuk detail lengkap.</p>
   </div>
@@ -844,9 +832,12 @@ function importFromWorkbook(wb){
   DATA.riskMovement.menurun = cellVal(ws,'F63') ?? DATA.riskMovement.menurun;
   DATA.riskMovement.ditutup = cellVal(ws,'F63') ?? DATA.riskMovement.ditutup;
 
+  const ewsNameAddr = ['C67','C68','C69'];
   const ewsAddr = ['E67','E68','E69'];
   const ewsThrAddr = ['F67','F68','F69'];
   DATA.ews.forEach((e,i)=>{
+    const rawName = cellVal(ws, ewsNameAddr[i]);
+    if(rawName) e.p = rawName;
     const raw = cellVal(ws, ewsAddr[i]);
     if(raw!==undefined) {
       if (e.p === "First Shipment") {
