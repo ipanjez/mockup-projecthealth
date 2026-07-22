@@ -139,10 +139,15 @@ body.dark .titlebar h1 { background: linear-gradient(90deg, #E8EDF3, #8B96AA); -
 .st-waspada { background: var(--yellow); color: #5C4300 !important; }
 .st-aman { background: var(--green); }
 
-.panel-d { background: var(--navy-soft); color: #fff; border-radius: var(--radius); padding: 10px 16px; display: flex; align-items: flex-start; gap: 14px; }
-.panel-d .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; white-space: nowrap; margin-top: 2px; }
-.panel-d .txt { font-size: 11.5px; line-height: 1.4; color: #E8EDF3; }
-.panel-d .txt b { color: var(--orange); }
+.panel-d { background: #0B1F3A; color: #fff; border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.panel-d .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.action-grid { display: flex; flex-direction: column; gap: 6px; }
+.action-card { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-left: 4px solid var(--orange); border-radius: 6px; padding: 6px 10px; display: flex; gap: 8px; align-items: flex-start; }
+.prio-tag { background: var(--orange); color: #fff; font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+.action-content { font-size: 10.5px; line-height: 1.35; color: #E8EDF3; flex: 1; }
+.action-kat { color: #FFB088; font-weight: 700; }
+.action-meta { font-size: 9.5px; color: #8B96AA; margin-top: 2px; display: flex; gap: 12px; }
+.action-meta span { color: #C0CEE0; }
 
 /* Detail Section */
 .detail { max-width: 1500px; margin: 26px auto 0; display: flex; flex-direction: column; gap: 20px; }
@@ -532,23 +537,41 @@ function renderDashboard() {
 
   // EWS
   document.getElementById('ewsRow').innerHTML = DATA.ews.map(i => {
-    let isDate = typeof i.thrVal === 'string' && i.thrVal.includes('-');
+    let isDate = typeof i.val === 'string' && (i.val.includes('-') || i.val.includes('/'));
     let st = ewsStatus(i.val, i.thrVal, isDate, DATA.config.ewsBuffer);
     let stCls = st === 'Bahaya' ? 'st-bahaya' : (st === 'Waspada' ? 'st-waspada' : 'st-aman');
+    let unitStr = (isDate || !i.unit || i.unit.toLowerCase() === 'hari') ? '' : ` ${i.unit}`;
     return `
       <div class="ews-chip" style="border-left-color: var(--${st==='Bahaya'?'red':(st==='Waspada'?'yellow':'green')})">
         <div class="p">${i.p}</div>
-        <div class="a">${i.val} ${i.unit||''}</div>
+        <div class="a">${i.val}${unitStr}</div>
         <div class="t">Thr: ${i.thrVal}</div>
         <span class="stlabel ${stCls}">${st.toUpperCase()}</span>
       </div>
     `;
   }).join('');
 
-  // Actions
-  let maxA = DATA.config.maxActions;
-  let topA = DATA.actions.slice(0, maxA);
-  document.getElementById('execActionsText').innerHTML = topA.map(a => `<b>${a.no}.</b> ${a.keput}`).join(' &nbsp;|&nbsp; ') + (DATA.actions.length>maxA ? ' ... <i>(lihat tabel di bawah)</i>' : '');
+  // Executive Actions (Priority rendering)
+  let maxA = DATA.config.maxActions || 3;
+  let activeActions = DATA.actions.filter(a => a.prio > 0);
+  let topA = activeActions.slice(0, maxA);
+  
+  if (topA.length === 0) topA = DATA.actions.slice(0, maxA);
+  
+  let actionsHtml = topA.map(a => `
+    <div class="action-card">
+      <span class="prio-tag">#${a.prio || a.no}</span>
+      <div class="action-content">
+        <div><span class="action-kat">[${a.kat}]</span> ${a.keput}</div>
+        <div class="action-meta">
+          <div>PIC: <span>${a.pic}</span></div>
+          <div>Dampak: <span>${a.dampak}</span></div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  
+  document.getElementById('execActionsText').innerHTML = `<div class="action-grid">${actionsHtml}</div>`;
 
   // Tables
   document.getElementById('riskTable').innerHTML = DATA.topRisks.map(r => {
@@ -675,7 +698,8 @@ function parseWorkbook(wb) {
         let score = getVal(ws, r, 3);
         if (score === null || score === undefined) break;
         let weight = getVal(ws, r, 4) || 0;
-        items.push([name, score*100, weight]);
+        let normScore = (typeof score === 'number' && score <= 1.0) ? score * 100 : score;
+        items.push([name, normScore, weight]);
         r++;
       }
     }
@@ -786,35 +810,40 @@ function parseWorkbook(wb) {
     if (newTopRisks.length > 0) DATA.topRisks = newTopRisks;
   }
 
-  // ACTIONS (Sheet 2)
+  // ACTIONS (Sheet Risk_Action_Tracker)
   let wa = wb.Sheets['Risk_Action_Tracker'];
   if (wa) {
-    let r = 5; // row 6
-    DATA.actions = [];
+    let r = 5; // row 6 (0-indexed = 5)
+    let newActions = [];
     while (r <= 100) {
-      let no = getVal(wa, r, 1);
-      if (!no) break;
-      DATA.actions.push({
-        no,
-        isu: getVal(wa, r, 2),
-        kat: getVal(wa, r, 3),
-        keput: getVal(wa, r, 4),
-        pic: getVal(wa, r, 5),
-        dampak: getVal(wa, r, 6),
-        lvl: getVal(wa, r, 7) || '-'
+      let no = getVal(wa, r, 0); // Col A
+      let isu = getVal(wa, r, 1); // Col B
+      if (!isu) { r++; continue; }
+      if (typeof isu === 'string' && (isu.toLowerCase().includes('isu') || isu.toLowerCase().includes('peristiwa') || isu.toLowerCase().includes('sumber'))) {
+        r++;
+        continue;
+      }
+      let kat = getVal(wa, r, 2) || '';
+      let keput = getVal(wa, r, 3) || '';
+      let pic = getVal(wa, r, 4) || '';
+      let dampak = getVal(wa, r, 5) || '';
+      let prioVal = getVal(wa, r, 7); // Col H (0-indexed = 7) Prioritas Dashboard
+      let prio = parseInt(prioVal);
+      if (isNaN(prio)) prio = parseInt(no) || (newActions.length + 1);
+      newActions.push({
+        no: parseInt(no) || (newActions.length + 1),
+        isu: String(isu),
+        kat: String(kat),
+        keput: String(keput),
+        pic: String(pic),
+        dampak: String(dampak),
+        prio: prio,
+        lvl: '-'
       });
       r++;
     }
-    // Movement
-    DATA.riskMovement = [];
-    for (let mr=16; mr<=19; mr++) {
-      let label = getVal(wa, mr, 1);
-      if (label) {
-        DATA.riskMovement.push({
-          label, count: getVal(wa, mr, 2)||0, desc: getVal(wa, mr, 3)||''
-        });
-      }
-    }
+    newActions.sort((a, b) => a.prio - b.prio);
+    if (newActions.length > 0) DATA.actions = newActions;
   }
 }
 
