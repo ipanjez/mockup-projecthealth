@@ -73,7 +73,7 @@ h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; margin: 0; }
 /* Stage */
 .stage {
   max-width: 1500px; margin: 0 auto;
-  aspect-ratio: 16/9;
+  min-height: 800px;
   background: var(--stage-bg);
   border: 1px solid var(--panel-border);
   border-radius: 20px;
@@ -168,7 +168,7 @@ td b { color: var(--text-hi); }
 @media print {
   body { background: #fff; padding: 0; }
   .toolbar { display: none; }
-  .stage { box-shadow: none; border: none; aspect-ratio: 16/9; margin-bottom: 20px; page-break-after: always; }
+  .stage { box-shadow: none; border: none; min-height: auto; margin-bottom: 20px; page-break-after: always; }
   .detail { display: none; } /* Hide detail in PDF/Image export of stage */
 }
 </style>
@@ -875,7 +875,12 @@ function exportElem(elemId, filename, type) {
       let imgData = canvas.toDataURL('image/jpeg', 0.9);
       let w = pdf.internal.pageSize.getWidth();
       let h = (canvas.height * w) / canvas.width;
-      pdf.addImage(imgData, 'JPEG', 0, 0, w, h);
+      if (h > pdf.internal.pageSize.getHeight()) {
+        let ratio = pdf.internal.pageSize.getHeight() / h;
+        w *= ratio;
+        h *= ratio;
+      }
+      pdf.addImage(imgData, 'JPEG', (pdf.internal.pageSize.getWidth() - w)/2, 0, w, h);
       pdf.save(filename + '.pdf');
     } else {
       let a = document.createElement('a');
