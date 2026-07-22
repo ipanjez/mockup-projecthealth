@@ -172,6 +172,7 @@ td b { color: var(--text-hi); }
 
 <div class="toolbar">
   <div class="ttl" id="syncNote"><span style="color:var(--amber);font-weight:bold;">⬤ MOCKUP MODE</span> — Menampilkan data statis. Silakan muat file Excel.</div>
+  <div id="importStatus"></div>
   <div class="btnrow">
     <button class="btn" id="btnToggleDark">🌙 Dark Mode</button>
     <button class="btn" id="btnDownloadTpl">⭳ Unduh Template</button>
@@ -564,11 +565,19 @@ function renderDashboard() {
 }
 
 // --- IMPORT LOGIC ---
-document.getElementById('btnImport').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('btnImport').addEventListener('click', () => {
+  document.getElementById('fileInput').value = '';
+  document.getElementById('fileInput').click();
+});
 document.getElementById('fileInput').addEventListener('change', function(e) {
   let file = e.target.files[0];
   if (!file) return;
-  document.getElementById('importStatus').innerHTML = '⏳ Membaca...';
+  
+  function setStatus(html) {
+    let el = document.getElementById('importStatus');
+    if (el) el.innerHTML = html;
+  }
+  setStatus('⏳ Membaca...');
   
   let reader = new FileReader();
   reader.onload = function(e) {
@@ -578,12 +587,17 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
       parseWorkbook(wb);
       localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
       renderDashboard();
-      document.getElementById('importStatus').innerHTML = '<span style="color:var(--green)">✅ Berhasil</span>';
-      document.getElementById('syncNote').style.display = 'none';
+      setStatus('<span style="color:var(--green)">✅ Berhasil</span>');
+      let syncNote = document.getElementById('syncNote');
+      if (syncNote) syncNote.style.display = 'none';
     } catch (err) {
       console.error(err);
-      document.getElementById('importStatus').innerHTML = '<span style="color:var(--red)">❌ Gagal (Format Salah)</span>';
+      setStatus('<span style="color:var(--red)">❌ Gagal: ' + (err.message || 'Format Salah') + '</span>');
     }
+  };
+  reader.onerror = function(err) {
+    console.error(err);
+    setStatus('<span style="color:var(--red)">❌ Gagal membaca file</span>');
   };
   reader.readAsArrayBuffer(file);
 });
@@ -701,10 +715,13 @@ function parseWorkbook(wb) {
   // 7. Mitigation
   if (sections[7] !== undefined) {
     let r = sections[7]+1;
-    DATA.mitigation.completed = (getVal(ws, r, 3)||0)*100;
-    DATA.mitigation.overdue = (getVal(ws, r+1, 3)||0)*100;
-    DATA.mitigation.onTrack = (getVal(ws, r+2, 3)||0)*100;
-    DATA.mitigation.escalations = getVal(ws, r+3, 3)||0;
+    let cVal = getVal(ws, r, 3) || 0;
+    DATA.mitigation.completed = cVal <= 1 ? cVal * 100 : cVal;
+    let oVal = getVal(ws, r+1, 3) || 0;
+    DATA.mitigation.overdue = oVal <= 1 ? oVal * 100 : oVal;
+    let tVal = getVal(ws, r+2, 3) || 0;
+    DATA.mitigation.onTrack = tVal <= 1 ? tVal * 100 : tVal;
+    DATA.mitigation.escalations = getVal(ws, r+3, 3) || 0;
   }
 
   // 8. EWS — dynamic rows
@@ -745,20 +762,28 @@ function parseWorkbook(wb) {
 
   // 9. Top Risks
   if (sections[9] !== undefined) {
-    let r = sections[9]+2;
-    DATA.topRisks = [];
+    let r = sections[9]+1;
+    let newTopRisks = [];
     while (r <= range.e.r) {
       let code = getVal(ws, r, 2);
-      if (!code) break;
-      DATA.topRisks.push({
-        code,
-        desc: getVal(ws, r, 3),
-        kat: getVal(ws, r, 4),
-        L: getVal(ws, r, 5),
-        C: getVal(ws, r, 6)
-      });
+      if (code && typeof code === 'string') {
+        let codeStr = code.trim();
+        if (codeStr.toLowerCase().includes('kode') || 
+            codeStr.toLowerCase().includes('skala') || 
+            codeStr.toLowerCase().includes('catatan') || 
+            codeStr.match(/^\d+\./)) {
+          r++;
+          continue;
+        }
+        let desc = getVal(ws, r, 3) || '';
+        let kat = getVal(ws, r, 4) || '';
+        let L = parseInt(getVal(ws, r, 5)) || 1;
+        let C = parseInt(getVal(ws, r, 6)) || 1;
+        newTopRisks.push({ code: codeStr, desc, kat, L, C });
+      }
       r++;
     }
+    if (newTopRisks.length > 0) DATA.topRisks = newTopRisks;
   }
 
   // ACTIONS (Sheet 2)
