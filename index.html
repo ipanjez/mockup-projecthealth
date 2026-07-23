@@ -88,7 +88,7 @@ body.dark .titlebar h1 { color: #E8EDF3; }
 .titlebar .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--orange); margin-top: 4px; font-weight: 600; }
 .status-pill { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 4px 12px; border-radius: 20px; border: 1.5px solid var(--orange); color: var(--orange); font-weight: 700; text-transform: uppercase; }
 
-.main-grid { flex: 1; display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 12px; min-height: 0; }
+.main-grid { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; min-height: 0; }
 .panel { background: var(--panel-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--panel-border); border-radius: var(--radius); padding: 11px; display: grid; gap: 9px; min-height: 0; transition: background 0.3s; }
 .panel-a { grid-template-rows: 1fr 1fr; grid-template-columns: 1fr 1.05fr; grid-template-areas: "phs sub" "fin curve"; }
 .panel-b { grid-template-rows: 1fr 1fr; grid-template-columns: 0.85fr 1.15fr; grid-template-areas: "lvl heat" "cnt mit"; }
@@ -276,17 +276,16 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
         </div>
       </div>
     </div>
-    <div class="panel panel-c-d" style="background: transparent; border: none; padding: 0; box-shadow: none; display: flex; flex-direction: column; gap: 12px;">
-      <div class="panel-c" style="flex: 1; margin: 0; min-height: 0; display: flex; flex-direction: column; overflow-y: auto;">
-        <div class="cell-title">Early Warning System (EWS) Alerts</div>
-        <div class="ews-row" id="ewsRow" style="display: flex; flex-direction: column; gap: 8px;"></div>
-      </div>
+  </div>
 
-      <div class="panel-d" style="flex: 1; margin: 0; min-height: 0; display: flex; flex-direction: column; overflow-y: auto;">
-        <div class="lbl" style="margin-bottom: 8px;">EXECUTIVE ACTIONS</div>
-        <div class="txt" id="execActionsText" style="flex: 1; overflow-y: auto;"></div>
-      </div>
-    </div>
+  <div class="panel-c">
+    <div class="cell-title">Early Warning System (EWS) Alerts</div>
+    <div class="ews-row" id="ewsRow"></div>
+  </div>
+
+  <div class="panel-d">
+    <div class="lbl">EXECUTIVE ACTIONS</div>
+    <div class="txt" id="execActionsText"></div>
   </div>
 </div>
 
@@ -632,9 +631,11 @@ function renderDashboard() {
     return `
       <div class="ews-chip" style="border-left-color: var(--${st==='Bahaya'?'red':(st==='Waspada'?'yellow':'green')})">
         <div class="p">${i.p}</div>
-        <div class="a">${i.val}${unitStr}</div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div class="a">${i.val}${unitStr}</div>
+          <span class="stlabel ${stCls}" style="margin-top: 0;">${st.toUpperCase()}</span>
+        </div>
         <div class="t">Thr: ${i.thrVal}</div>
-        <span class="stlabel ${stCls}">${st.toUpperCase()}</span>
       </div>
     `;
   }).join('');
@@ -645,15 +646,14 @@ function renderDashboard() {
   if (!DATA.executiveActions || DATA.executiveActions.length === 0) {
     eaHtml = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px;">Tidak ada aksi eksekutif</div>';
   } else {
-    // Show top 3 for dashboard
-    eaHtml = '<div class="action-grid">' + DATA.executiveActions.slice(0, maxA).map(a => `
-      <div class="action-card" style="padding: 6px 10px; align-items: center; gap: 8px;">
-        <div class="prio-tag" style="margin-top: 0;">#${a.prioritas < 999 ? a.prioritas : '-'}</div>
-        <div class="action-content" style="min-width: 0; display: flex; flex-direction: row; align-items: baseline; gap: 8px; font-size: 11px;">
-          <div style="font-weight: bold; white-space: nowrap;">${a.kategori} <span style="font-weight: 400; font-size: 9.5px; opacity: 0.8;">(${a.level})</span></div>
-          <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">${a.isu}</div>
-        </div>
-      </div>
+    // Show top actions inline (one line)
+    eaHtml = '<div style="font-size: 11px; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 0;">' + 
+      DATA.executiveActions.slice(0, maxA).map(a => `
+      <span style="display: inline-flex; align-items: center; margin-right: 14px;">
+        <span style="background: var(--orange); color: #fff; padding: 2px 5px; border-radius: 4px; font-family: \'IBM Plex Mono\', monospace; font-weight: 800; font-size: 9px; margin-right: 6px;">#${a.prioritas < 999 ? a.prioritas : '-'}</span>
+        <b style="color: var(--navy); margin-right: 6px;">${a.kategori}</b> 
+        <span style="color: var(--text-hi); opacity: 0.9;">${a.isu}</span>
+      </span>
     `).join('') + '</div>';
   }
   
