@@ -193,10 +193,10 @@ td b { color: var(--text-hi); }
 
 /* Fullscreen Mode */
 #stage.fullscreen-mode {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;
-  width: 100vw; height: 56.25vw; /* 16:9 aspect ratio */
-  max-width: 177.78vh; max-height: 100vh;
-  margin: auto; border-radius: 0; box-shadow: none;
+  position: fixed; top: 50%; left: 50%; z-index: 9999;
+  width: 1200px; height: 675px;
+  margin: 0; border-radius: 0; box-shadow: none;
+  transform: translate(-50%, -50%) scale(min(calc(100vw / 1200), calc(100vh / 675)));
 }
 body.is-fullscreen { overflow: hidden; background: #000; }
 body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
