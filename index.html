@@ -684,6 +684,13 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
       parseWorkbook(wb);
       localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
       
+      let bytes = new Uint8Array(e.target.result);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      let base64 = btoa(binary);
+
       // Save to history array
       let historyRaw = localStorage.getItem('projectHealthHistoryData');
       let history = historyRaw ? JSON.parse(historyRaw) : [];
@@ -691,7 +698,8 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
       history.unshift({
         timestamp: ts,
         period: DATA.period || 'Unknown',
-        data: JSON.parse(JSON.stringify(DATA))
+        data: JSON.parse(JSON.stringify(DATA)),
+        fileBase64: base64
       });
       // Limit history to 20 to avoid exceeding localStorage limit
       if (history.length > 20) history = history.slice(0, 20);
@@ -1141,7 +1149,12 @@ function exportDataToExcel(dataObj, filename = "Template_Dashboard_v3.xlsx") {
 }
 
 document.getElementById('btnDownloadTpl').addEventListener('click', () => {
-  exportDataToExcel(DATA, "Template_Dashboard_v3.xlsx");
+  let a = document.createElement('a');
+  a.href = 'Template_Dashboard_v3.xlsx';
+  a.download = 'Template_Dashboard_v3.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 });
 
 function downloadHistoryExcel(index) {
@@ -1149,7 +1162,26 @@ function downloadHistoryExcel(index) {
   let history = historyRaw ? JSON.parse(historyRaw) : [];
   let item = history[index];
   if (!item || !item.data) return;
-  exportDataToExcel(item.data, "Data_Impor_" + item.period.replace(/\\s/g, "_") + ".xlsx");
+
+  if (item.fileBase64) {
+    let byteCharacters = atob(item.fileBase64);
+    let byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    let byteArray = new Uint8Array(byteNumbers);
+    let blob = new Blob([byteArray], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url;
+    a.download = "Data_Impor_" + item.period.replace(/\\s/g, "_") + ".xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } else {
+    exportDataToExcel(item.data, "Data_Impor_" + item.period.replace(/\\s/g, "_") + ".xlsx");
+  }
 }
 
 // --- HISTORY LOGIC ---
