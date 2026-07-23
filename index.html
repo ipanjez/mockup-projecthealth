@@ -896,52 +896,86 @@ function parseWorkbook(wb) {
   if (wsAct) {
     let actRange = XLSX.utils.decode_range(wsAct['!ref']);
     let actions = [];
-    for (let r = actRange.s.r; r <= actRange.e.r; r++) {
-      let startCol = 1; // Try Col B first
-      let testNoA = getVal(wsAct, r, 0); // Check Col A
-      if (typeof testNoA === 'number' || (typeof testNoA === 'string' && testNoA.match(/^\d+$/))) {
-        startCol = 0; // The user used the template where No is in Col A
-      }
-      
-      let no = getVal(wsAct, r, startCol);
-      if (typeof no === 'number' || (typeof no === 'string' && no.match(/^\d+$/))) {
-        let isu = getVal(wsAct, r, startCol+1) || '-';
-        let katLvl = getVal(wsAct, r, startCol+2) || '';
-        let tindakan = getVal(wsAct, r, startCol+3) || '-';
-        let pic = getVal(wsAct, r, startCol+4) || '-';
-        let dampak = getVal(wsAct, r, startCol+5) || '-';
-        let prioritasRaw = getVal(wsAct, r, startCol+6);
-        
-        let kategori = '-';
-        let level = '-';
-        
-        // If startCol is 0, they used the template: ['No','Isu','Kategori','Keputusan','PIC','Dampak','Level']
-        // where startCol+2 is Kategori, startCol+3 is Keputusan... and startCol+6 is Level!
-        if (startCol === 0) {
-          kategori = katLvl;
-          level = prioritasRaw || '-';
-          prioritasRaw = getVal(wsAct, r, startCol+7);
-        } else {
-          // Old logic where Kategori and Level are joined by dash
-          let katParts = katLvl.split('—');
-          kategori = katParts[0] ? katParts[0].trim() : '-';
-          level = katParts[1] ? katParts[1].trim() : '-';
+    
+    let colMap = { no: -1, isu: -1, kat: -1, tindakan: -1, pic: -1, dampak: -1, prio: -1, level: -1 };
+    let headerRow = -1;
+    
+    for (let r = actRange.s.r; r <= Math.min(actRange.e.r, actRange.s.r + 15); r++) {
+      let foundHeader = false;
+      for (let c = actRange.s.c; c <= actRange.e.c; c++) {
+        let val = String(getVal(wsAct, r, c) || '').toLowerCase().trim();
+        if ((val.includes('isu') || val.includes('risiko')) && !val.includes('kategori')) {
+          colMap.isu = c; foundHeader = true;
+        } else if (val === 'no' || val === 'no.') {
+          colMap.no = c;
+        } else if (val.includes('kategori')) {
+          colMap.kat = c;
+        } else if (val.includes('tindakan') || val.includes('keputusan')) {
+          colMap.tindakan = c;
+        } else if (val.includes('pic') || val.includes('penanggung jawab')) {
+          colMap.pic = c;
+        } else if (val.includes('dampak')) {
+          colMap.dampak = c;
+        } else if (val.includes('prioritas')) {
+          colMap.prio = c;
+        } else if (val === 'level' || val.includes('tingkat')) {
+          colMap.level = c;
         }
-        
-        let prio = parseInt(prioritasRaw);
-        if (isNaN(prio)) prio = 999;
-        
-        actions.push({
-          kategori: String(kategori),
-          level: String(level),
-          isu: String(isu),
-          tindakan: String(tindakan),
-          pic: String(pic),
-          dampak: String(dampak),
-          prioritas: prio
-        });
+      }
+      if (foundHeader && colMap.isu !== -1) {
+        headerRow = r;
+        break;
       }
     }
+    
+    if (headerRow !== -1 && colMap.isu !== -1) {
+      for (let r = headerRow + 1; r <= actRange.e.r; r++) {
+        let no = colMap.no !== -1 ? getVal(wsAct, r, colMap.no) : null;
+        let isDataRow = false;
+        
+        if (no !== null && (typeof no === 'number' || (typeof no === 'string' && String(no).trim().match(/^\d+/) !== null))) {
+          isDataRow = true;
+        } else if (colMap.no === -1) {
+          let checkIsu = getVal(wsAct, r, colMap.isu);
+          if (checkIsu && String(checkIsu).trim() !== '') isDataRow = true;
+        }
+        
+        if (isDataRow) {
+          let isu = getVal(wsAct, r, colMap.isu) || '-';
+          let katLvl = colMap.kat !== -1 ? getVal(wsAct, r, colMap.kat) || '' : '-';
+          let tindakan = colMap.tindakan !== -1 ? getVal(wsAct, r, colMap.tindakan) || '-' : '-';
+          let pic = colMap.pic !== -1 ? getVal(wsAct, r, colMap.pic) || '-' : '-';
+          let dampak = colMap.dampak !== -1 ? getVal(wsAct, r, colMap.dampak) || '-' : '-';
+          let prioritasRaw = colMap.prio !== -1 ? getVal(wsAct, r, colMap.prio) : null;
+          
+          let kategori = '-';
+          let level = '-';
+          
+          if (colMap.level !== -1) {
+            kategori = katLvl;
+            level = getVal(wsAct, r, colMap.level) || '-';
+          } else {
+            let katParts = String(katLvl).split('—');
+            kategori = katParts[0] ? katParts[0].trim() : '-';
+            level = katParts[1] ? katParts[1].trim() : '-';
+          }
+          
+          let prio = parseInt(prioritasRaw);
+          if (isNaN(prio)) prio = 999;
+          
+          actions.push({
+            kategori: String(kategori),
+            level: String(level),
+            isu: String(isu),
+            tindakan: String(tindakan),
+            pic: String(pic),
+            dampak: String(dampak),
+            prioritas: prio
+          });
+        }
+      }
+    }
+    
     if (actions.length > 0) {
       actions.sort((a, b) => a.prioritas - b.prioritas);
       DATA.executiveActions = actions;
