@@ -290,21 +290,46 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
 </div>
 
 <div class="detail" id="detailSection">
-  <div class="card">
-    <div class="eyebrow">Risk Matrix Reference</div>
-    <h2>Risk Register Details</h2>
-    <table id="riskTable">
-      <thead><tr><th>Kode</th><th>Deskripsi</th><th>Kategori</th><th>L</th><th>C</th><th>Score</th><th>Level</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <div class="card">
-    <div class="eyebrow">Action Tracker</div>
-    <h2>Executive Actions List</h2>
-    <table id="actionTableDetail">
-      <thead><tr><th>No</th><th>Isu / Risiko</th><th>Kategori</th><th>Keputusan / Tindakan</th><th>PIC</th><th>Dampak</th></tr></thead>
-      <tbody></tbody>
-    </table>
+  <div class="card" style="padding: 30px;">
+    <h2 style="margin-top: 0; margin-bottom: 25px; font-size: 20px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">Informasi Tambahan & Panduan Penggunaan Dashboard</h2>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+      
+      <!-- Kolom Kiri -->
+      <div>
+        <h3 style="color: var(--navy); margin-bottom: 10px; font-size: 15px;">1. Glosarium Singkat</h3>
+        <ul style="line-height: 1.6; color: var(--text-mid); margin-bottom: 30px; padding-left: 20px; font-size: 13px;">
+          <li><b style="color:var(--text-hi);">PV (Planned Value)</b>: Anggaran yang direncanakan untuk pekerjaan.</li>
+          <li><b style="color:var(--text-hi);">EV (Earned Value)</b>: Nilai riil pekerjaan yang telah selesai.</li>
+          <li><b style="color:var(--text-hi);">AC (Actual Cost)</b>: Total biaya aktual yang telah dikeluarkan.</li>
+          <li><b style="color:var(--text-hi);">NPV (Net Present Value)</b>: Selisih nilai sekarang dari arus kas.</li>
+          <li><b style="color:var(--text-hi);">SRI / PEI / CRI</b>: Indeks kesiapan rantai pasok (<i>Supply</i>), eksekusi proyek (<i>Execution</i>), dan aspek komersial (<i>Commercial</i>).</li>
+          <li><b style="color:var(--text-hi);">L x C</b>: <i>Likelihood</i> (Kemungkinan) dikali <i>Consequence</i> (Dampak).</li>
+          <li><b style="color:var(--text-hi);">EWS (Early Warning System)</b>: Sistem peringatan dini terkait parameter kritis.</li>
+        </ul>
+
+        <h3 style="color: var(--navy); margin-bottom: 10px; font-size: 15px;">2. Penjelasan Panel</h3>
+        <ul style="line-height: 1.6; color: var(--text-mid); padding-left: 20px; font-size: 13px;">
+          <li><b style="color:var(--text-hi);">Overall Project Health Score (PHS)</b>: Skor kesehatan komposit proyek (akumulasi SRI, PEI, CRI, Risiko, & EVM).</li>
+          <li><b style="color:var(--text-hi);">Sub-Index & EVM</b>: Merangkum metrik performa tiap parameter secara kuantitatif.</li>
+          <li><b style="color:var(--text-hi);">Risk Profile Heat Map</b>: Peta kuantitas risiko berdasarkan level keparahan (High s/d Low).</li>
+          <li><b style="color:var(--text-hi);">Executive Actions</b>: Isu & risiko <i>priority</i> yang butuh eskalasi/tindakan eksekutif segera.</li>
+        </ul>
+      </div>
+
+      <!-- Kolom Kanan -->
+      <div>
+        <h3 style="color: var(--navy); margin-bottom: 10px; font-size: 15px;">3. Panduan Penggunaan Fitur Dashboard</h3>
+        <ol style="line-height: 1.7; color: var(--text-mid); padding-left: 20px; font-size: 13px;">
+          <li style="margin-bottom: 8px;"><b>Interaktivitas Panel:</b> Sebagian besar panel di sebelah kanan (seperti <i>Heat Map, Mitigation Progress, Executive Actions</i>) dapat <b>DIKLIK</b> untuk memunculkan kotak rincian (<i>modal</i>) yang berisi data lengkap.</li>
+          <li style="margin-bottom: 8px;"><b>Memperbarui Data:</b> Gunakan tombol <b>⭳ Unduh Template</b> di pojok kanan atas untuk mendapatkan format Excel standar. Isi data bulan terbaru Anda, lalu klik <b>⭱ Muat Data Excel</b>. Dashboard akan otomatis di-<i>render</i> ulang!</li>
+          <li style="margin-bottom: 8px;"><b>Manajemen Riwayat (History):</b> Setiap file Excel yang Anda muat akan tersimpan otomatis. Klik tombol <b>🕒 Riwayat</b> untuk melihat data yang lalu, dan Anda bisa mengunduhnya kembali ke dalam format Excel!</li>
+          <li style="margin-bottom: 8px;"><b>Mode Presentasi (Full Screen):</b> Klik ikon <b>🖵</b> untuk me-<i>maximize</i> dashboard. Tampilan akan di-<i>zoom</i> sempurna menyesuaikan monitor (proyektor, TV, atau layar sentuh). Tekan tombol <kbd>Esc</kbd> untuk keluar.</li>
+          <li style="margin-bottom: 8px;"><b>Ekspor Cepat Laporan:</b> Ingin menempelkan grafik ke dalam PowerPoint? Klik <b>⭳ PNG</b> atau <b>⭳ JPG</b>. Atau gunakan <b>⭳ Export PDF</b> untuk format dokumen instan.</li>
+        </ol>
+      </div>
+      
+    </div>
   </div>
 </div>
 
@@ -636,18 +661,6 @@ function renderDashboard() {
   
   document.getElementById('execActionsText').innerHTML = eaHtml;
 
-  // Tables
-  document.getElementById('riskTable').innerHTML = DATA.topRisks.map(r => {
-    let scale = SCALE_LOOKUP[`${r.L}-${r.C}`] || 1;
-    let bg = getRiskScaleColor(scale);
-    let col = getRiskScaleColorText(scale);
-    let lvl = getRiskLevelName(scale*4); // mapping approximation
-    return `<tr><td><b>${r.code}</b></td><td>${r.desc}</td><td>${r.kat}</td><td>${r.L}</td><td>${r.C}</td><td>${scale}</td><td><span class="tag" style="background:${bg};color:${col}">${lvl}</span></td></tr>`;
-  }).join('');
-
-  document.getElementById('actionTableDetail').innerHTML = (DATA.executiveActions || []).map(a => `
-    <tr><td>${a.prioritas < 999 ? a.prioritas : '-'}</td><td><b>${a.isu}</b></td><td><span class="tag" style="background:var(--navy-soft)">${a.kategori}</span><br>${a.level}</td><td>${a.tindakan}</td><td>${a.pic}</td><td>${a.dampak}</td></tr>
-  `).join('');
 }
 
 // --- IMPORT LOGIC ---
