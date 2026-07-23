@@ -1024,8 +1024,18 @@ window.onload = () => {
   renderDashboard();
 };
 
+// Initialize Dark Mode from localStorage
+if (localStorage.getItem('themeMode') === 'dark') {
+  document.body.classList.add('dark');
+}
+
 document.getElementById('btnToggleDark').addEventListener('click', () => {
   document.body.classList.toggle('dark');
+  if (document.body.classList.contains('dark')) {
+    localStorage.setItem('themeMode', 'dark');
+  } else {
+    localStorage.setItem('themeMode', 'light');
+  }
 });
 
 function exportElem(elemId, filename, type) {
