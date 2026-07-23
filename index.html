@@ -757,8 +757,20 @@ function parseWorkbook(wb) {
         if (!name) break;
         if (typeof name === 'string' && (name.toLowerCase().includes('index') || name.toLowerCase().includes('total') || name.match(/^\d+\./))) break;
         let score = getVal(ws, r, 3);
-        if (score === null || score === undefined) break;
-        let weight = getVal(ws, r, 4) || 0;
+        let defItems = secId === 2 ? DATA.sri.items : secId === 3 ? DATA.pei.items : secId === 4 ? DATA.cri.items : [];
+        let match = null;
+        if (typeof name === 'string') {
+          match = defItems.find(i => i[0].toLowerCase() === name.toLowerCase());
+        }
+        if (score === null || score === undefined || score === '') {
+          if (match) score = match[1] / 100; // default is 0-100, we expect 0-1 from excel
+          else break;
+        }
+        let weight = getVal(ws, r, 4);
+        if (weight === null || weight === undefined || weight === '' || weight === 0 || isNaN(weight)) {
+          if (match) weight = match[2];
+          else weight = 0;
+        }
         let normScore = (typeof score === 'number' && score <= 1.0) ? score * 100 : score;
         items.push([name, normScore, weight]);
         r++;
