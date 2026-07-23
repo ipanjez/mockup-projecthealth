@@ -705,7 +705,13 @@ function parseWorkbook(wb) {
   
   DATA.companyName = getVal(ws,3,3) || DATA.companyName;
   DATA.projectName = getVal(ws,3,6) || DATA.projectName;
-  DATA.period = getVal(ws,4,3) || DATA.period;
+  let rawPeriod = getVal(ws,4,3);
+  if (rawPeriod instanceof Date) {
+    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    DATA.period = `${months[rawPeriod.getMonth()]} ${rawPeriod.getFullYear()}`;
+  } else {
+    DATA.period = rawPeriod || DATA.period;
+  }
   DATA.status = getVal(ws,4,5) || DATA.status;
 
   let range = XLSX.utils.decode_range(ws['!ref']);
@@ -1021,6 +1027,7 @@ window.loadHistory = function(index) {
 };
 
 window.deleteHistory = function(index) {
+  if (!confirm('Apakah Anda yakin ingin menghapus log versi ini?')) return;
   let historyRaw = localStorage.getItem('projectHealthHistoryData');
   if (!historyRaw) return;
   let history = JSON.parse(historyRaw);
