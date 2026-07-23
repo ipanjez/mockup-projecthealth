@@ -646,14 +646,11 @@ function renderDashboard() {
   } else {
     // Show top 3 for dashboard
     eaHtml = '<div class="action-grid">' + DATA.executiveActions.slice(0, maxA).map(a => `
-      <div class="action-card">
-        <div class="prio-tag">#${a.prioritas < 999 ? a.prioritas : '-'}</div>
-        <div class="action-content" style="min-width: 0;">
-          <div class="action-kat">${a.kategori} <span style="font-weight:400; font-size:9.5px; opacity:0.8;">— ${a.level}</span></div>
-          <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; margin: 4px 0;">${a.isu}</div>
-          <div class="action-meta">
-            <span>PIC: ${a.pic}</span>
-          </div>
+      <div class="action-card" style="padding: 6px 10px; align-items: center; gap: 8px;">
+        <div class="prio-tag" style="margin-top: 0;">#${a.prioritas < 999 ? a.prioritas : '-'}</div>
+        <div class="action-content" style="min-width: 0; display: flex; flex-direction: row; align-items: baseline; gap: 8px; font-size: 11px;">
+          <div style="font-weight: bold; white-space: nowrap;">${a.kategori} <span style="font-weight: 400; font-size: 9.5px; opacity: 0.8;">(${a.level})</span></div>
+          <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">${a.isu}</div>
         </div>
       </div>
     `).join('') + '</div>';
