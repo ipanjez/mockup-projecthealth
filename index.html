@@ -48,7 +48,8 @@ body.dark {
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; background: var(--bg); transition: background 0.3s, color 0.3s; }
+html { margin: 0; padding: 0; min-height: 100vh; }
+body { margin: 0; padding: 0; min-height: 100vh; background: var(--bg); transition: background 0.3s, color 0.3s; }
 body {
   font-family: 'Inter', sans-serif;
   color: var(--text-hi);
@@ -123,7 +124,7 @@ body.dark .titlebar h1 { color: #E8EDF3; }
 .heatmap { display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr); gap: 2px; flex: 1; }
 .hcell { border-radius: 4px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; padding: 2px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700; cursor: default; transition: opacity 0.2s; }
 .hcell:hover { opacity: 0.8; }
-.risk-tag { background: rgba(0,0,0,0.2); padding: 1px 3px; border-radius: 2px; }
+.risk-tag { background: var(--cell-bg); color: var(--text-hi); padding: 1px 3px; border-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-weight: 600; }
 .heat-axes { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 8px; color: var(--text-dim); margin-top: 4px; }
 
 /* Bottom Panels */
@@ -215,7 +216,7 @@ td b { color: var(--text-hi); }
   cursor: pointer;
   transition: all 0.2s;
 }
-body.dark .sheet-tab { background: rgba(255,255,255,0.05); }
+body.dark .sheet-tab { background: var(--panel-border); }
 .sheet-tab.active {
   background: var(--cell-bg);
   color: var(--navy);
@@ -322,8 +323,7 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
 
   <!-- TABS -->
   <div class="sheet-tabs">
-    <div class="sheet-tab active" onclick="switchSheet('tab-dashboard')">Dashboard</div>
-    <div class="sheet-tab" onclick="switchSheet('tab-history')">Data Log</div>
+    <!-- Dynamic tabs will be rendered here -->
   </div>
 </div>
 
@@ -412,7 +412,42 @@ let DATA = {
     riskWeights: [0.40, 0.40, 0.20],
     maxActions: 3,
     ewsBuffer: 10,
-    colors: { green:'#2E9B57', yellow:'#E8B93A', amber:'#E4622E', red:'#C0392B', navy:'#0B1F3A' }
+    colors: { green:'#2E9B57', yellow:'#E8B93A', amber:'#E4622E', red:'#C0392B', navy:'#0B1F3A' },
+    // RAG thresholds — synced from Config Section F (rows 42-59)
+    rag: {
+      cpiG:1.00, cpiY:0.95, cpiO:0.90,
+      spiG:1.00, spiY:0.95, spiO:0.90,
+      sriG:90,   sriY:75,   sriO:65,
+      peiG:90,   peiY:80,   peiO:70,
+      criG:80,   criY:60,   criO:50,
+      phsG:90,   phsY:80,   phsO:70,
+    },
+    // EWS buffers — synced from Config Section G (rows 65-67)
+    ewsBuf: { firstShipment:30, progress:5, offtaker:0.10 },
+    // Likelihood criteria — synced from Config Section H (rows 72-76)
+    likelihood: [
+      { l:1, cat:'Sangat Jarang Terjadi',  prob:'< 10%',    note:'Hampir tidak pernah terjadi' },
+      { l:2, cat:'Jarang Terjadi',          prob:'10 – 30%', note:'Pernah terjadi, namun jarang' },
+      { l:3, cat:'Bisa Terjadi',            prob:'30 – 50%', note:'Pernah terjadi beberapa kali' },
+      { l:4, cat:'Sangat Mungkin Terjadi',  prob:'50 – 70%', note:'Kondisi & indikasi sudah muncul' },
+      { l:5, cat:'Hampir Pasti Terjadi',    prob:'> 70%',    note:'Indikasi kuat akan terjadi' },
+    ],
+    // Consequence criteria — synced from Config Section I (rows 82-86)
+    consequence: [
+      { c:1, cat:'Sangat Rendah', desc1:'< USD 0.5 Jt',  desc2:'Keterlambatan 1 bulan'  },
+      { c:2, cat:'Rendah',        desc1:'USD 0.5–2.0 Jt',desc2:'Keterlambatan 3 bulan'  },
+      { c:3, cat:'Moderat',       desc1:'USD 2.0–10 Jt', desc2:'Keterlambatan 6 bulan'  },
+      { c:4, cat:'Tinggi',        desc1:'USD 10–30 Jt',  desc2:'Keterlambatan 12 bulan' },
+      { c:5, cat:'Sangat Tinggi', desc1:'> USD 30 Jt',   desc2:'Keterlambatan > 24 bulan' },
+    ],
+    // Risk level boundaries — synced from Config Section J (rows 92-96)
+    riskLevels: [
+      { name:'Low',             scaleMin:1,  scaleMax:5,  idxRange:'0 – 20'   },
+      { name:'Low to Moderate', scaleMin:6,  scaleMax:11, idxRange:'21 – 40'  },
+      { name:'Moderate',        scaleMin:12, scaleMax:15, idxRange:'41 – 60'  },
+      { name:'Moderate to High',scaleMin:16, scaleMax:19, idxRange:'61 – 80'  },
+      { name:'High',            scaleMin:20, scaleMax:25, idxRange:'81 – 100' },
+    ],
   },
   evm: { pv: 280.8, ev: 264.6, ac: 270.0, npv: 77.60 },
   sri: {
@@ -497,22 +532,32 @@ function getRiskLevelName(score) {
   if (score <= 80) return 'Moderate to High';
   return 'High';
 }
-function ewsStatus(val, thrVal, isDate, bufferPct) {
-  if (isDate) {
-    let t = new Date(thrVal).getTime();
-    let v = new Date(val).getTime();
-    let diffDays = (v - t) / (1000 * 3600 * 24);
-    if (diffDays <= 0) return 'Aman';
-    if (diffDays <= 14) return 'Waspada';
-    return 'Bahaya';
-  } else {
-    let t = parseFloat(thrVal);
-    let v = parseFloat(val);
-    let buf = t * (1 - bufferPct/100);
-    if (v >= t) return 'Aman';
-    if (v >= buf) return 'Waspada';
-    return 'Bahaya';
+function calculateEwsStatus(e) {
+  if (e.impl) return e.impl;
+  let isLowerBetter = String(e.thr).toLowerCase().includes('lower is better');
+  let isHigherBetter = String(e.thr).toLowerCase().includes('higher is better');
+  let isPct = String(e.thr).includes('%');
+  let statusDisplay = '';
+  
+  if (typeof e.val === 'number' && typeof e.thrVal === 'number' && typeof e.unit === 'number') {
+    if (isLowerBetter || (!isHigherBetter && !isPct)) {
+       if (e.val <= e.thrVal) statusDisplay = 'Aman';
+       else if (e.val <= e.thrVal + e.unit) statusDisplay = 'Waspada';
+       else statusDisplay = 'Bahaya';
+    } else {
+       if (e.val >= e.thrVal) statusDisplay = 'Aman';
+       else if (e.val >= e.thrVal - e.unit) statusDisplay = 'Waspada';
+       else statusDisplay = 'Bahaya';
+    }
+  } else if (typeof e.val === 'string' && e.val.includes('-') && typeof e.thrVal === 'string' && e.thrVal.includes('-')) {
+    let d1 = new Date(e.val).getTime();
+    let d2 = new Date(e.thrVal).getTime();
+    let bufferMs = (e.unit || 0) * 86400000;
+    if (d1 <= d2) statusDisplay = 'Aman';
+    else if (d1 <= d2 + bufferMs) statusDisplay = 'Waspada';
+    else statusDisplay = 'Bahaya';
   }
+  return statusDisplay || '-';
 }
 function calcDerived() {
   let c = DATA.config;
@@ -559,9 +604,10 @@ function renderDashboard() {
   // Gauge (PHS)
   let phs = DATA.phs;
   document.getElementById('phsNum').textContent = phs.toFixed(2) + '%';
-  let phsCol = ragColor(phs, 90, 80, 70);
+  let R = DATA.config.rag;
+  let phsCol = ragColor(phs, R.phsG, R.phsY, R.phsO);
   let pChip = document.getElementById('phsChip');
-  pChip.textContent = ragLabel(phs, 90, 80, 70);
+  pChip.textContent = ragLabel(phs, R.phsG, R.phsY, R.phsO);
   pChip.style.background = phsCol;
   pChip.style.color = '#fff';
   
@@ -586,15 +632,15 @@ function renderDashboard() {
   ].map(i => `
     <div class="bar-row">
       <div class="kv"><span class="k">${i.n}</span><span class="v" style="font-size:12px">${i.v.toFixed(1)}%</span></div>
-      <div class="bar-track"><div class="bar-fill" style="width:${i.v}%; background:${ragColor(i.v, 90,80,70)}"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${i.v}%; background:${ragColor(i.v, R.sriG, R.sriY, R.sriO)}"></div></div>
     </div>
   `).join('');
 
   // EVM 
   let ev = DATA.evm;
   document.getElementById('finKV').innerHTML = `
-    <div class="kv"><span class="k">CPI</span><span class="v" style="color:${ev.cpi>=1?c.green:c.red}">${ev.cpi.toFixed(2)}</span></div>
-    <div class="kv"><span class="k">SPI</span><span class="v" style="color:${ev.spi>=1?c.green:c.red}">${ev.spi.toFixed(2)}</span></div>
+    <div class="kv"><span class="k">CPI</span><span class="v" style="color:${ev.cpi>=R.cpiG?c.green:ev.cpi>=R.cpiY?c.yellow:ev.cpi>=R.cpiO?c.amber:c.red}">${ev.cpi.toFixed(2)}</span></div>
+    <div class="kv"><span class="k">SPI</span><span class="v" style="color:${ev.spi>=R.spiG?c.green:ev.spi>=R.spiY?c.yellow:ev.spi>=R.spiO?c.amber:c.red}">${ev.spi.toFixed(2)}</span></div>
     <div class="kv"><span class="k">CV (USD Jt)</span><span class="v" style="color:${ev.cv>=0?c.green:c.red}">${ev.cv>=0?'+':''}${ev.cv.toFixed(2)}</span></div>
     <div class="kv"><span class="k">SV (USD Jt)</span><span class="v" style="color:${ev.sv>=0?c.green:c.red}">${ev.sv>=0?'+':''}${ev.sv.toFixed(2)}</span></div>
     <div class="kv"><span class="k">NPV (USD Jt)</span><span class="v" style="color:${c.navy}">$${ev.npv?ev.npv.toFixed(2):'0.00'}</span></div>
@@ -665,31 +711,34 @@ function renderDashboard() {
   // EWS
   document.getElementById('ewsRow').innerHTML = DATA.ews.map(i => {
     let isDate = typeof i.val === 'string' && (i.val.includes('-') || i.val.includes('/'));
-    let st = ewsStatus(i.val, i.thrVal, isDate, DATA.config.ewsBuffer);
-    let stCls = st === 'Bahaya' ? 'st-bahaya' : (st === 'Waspada' ? 'st-waspada' : 'st-aman');
-    let unitStr = (isDate || !i.unit || i.unit.toLowerCase() === 'hari') ? '' : ` ${i.unit}`;
+    // Read status from Excel if available, otherwise calculate it
+    let st = calculateEwsStatus(i);
+    let stCls = st.toLowerCase() === 'bahaya' ? 'st-bahaya' : (st.toLowerCase() === 'waspada' ? 'st-waspada' : 'st-aman');
+    let isPct = String(i.thr).includes('%');
+    let displayVal = isPct && typeof i.val === 'number' ? (i.val * 100).toFixed(1) + '%' : i.val;
+    let displayThr = isPct && typeof i.thrVal === 'number' ? (i.thrVal * 100).toFixed(1) + '%' : i.thrVal;
+    
     return `
-      <div class="ews-chip" style="border-left-color: var(--${st==='Bahaya'?'red':(st==='Waspada'?'yellow':'green')})">
+      <div class="ews-chip" style="border-left-color: var(--${st.toLowerCase()==='bahaya'?'red':(st.toLowerCase()==='waspada'?'yellow':'green')})">
         <div class="p">${i.p}</div>
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div class="a">${i.val}${unitStr}</div>
+          <div class="a">${displayVal}</div>
           <span class="stlabel ${stCls}" style="margin-top: 0;">${st.toUpperCase()}</span>
         </div>
-        <div class="t">Thr: ${i.thrVal}</div>
+        <div class="t">Thr: ${displayThr}</div>
       </div>
     `;
   }).join('');
 
   // Executive Actions (Priority rendering)
-  let maxA = DATA.config.maxActions || 3;
   let eaHtml = '';
   if (!DATA.executiveActions || DATA.executiveActions.length === 0) {
     eaHtml = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px;">Tidak ada aksi eksekutif</div>';
   } else {
-    // Show top actions inline (one line)
-    eaHtml = '<div style="font-size: 11px; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 0;">' + 
-      DATA.executiveActions.slice(0, maxA).map(a => `
-      <span style="display: inline-flex; align-items: center; margin-right: 14px;">
+    // Show all actions inline (wrap lines)
+    eaHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 11px; color: var(--text-hi); padding: 4px 0;">' + 
+      DATA.executiveActions.slice(0, DATA.config.maxActions).map(a => `
+      <span style="display: inline-flex; align-items: center;">
         <span style="background: var(--orange); color: #fff; padding: 2px 5px; border-radius: 4px; font-family: \'IBM Plex Mono\', monospace; font-weight: 800; font-size: 9px; margin-right: 6px;">#${a.prioritas < 999 ? a.prioritas : '-'}</span>
         <b style="color: var(--navy); margin-right: 6px;">${a.kategori}</b> 
         <span style="color: var(--text-hi); opacity: 0.9;">${a.isu}</span>
@@ -770,19 +819,18 @@ function parseWorkbook(wb) {
   // CONFIG
   let wc = wb.Sheets['Config'];
   if (wc) {
-    // Config sheet layout (0-indexed rows): PHS weights at rows 11-15, Risk weights at 20-22
+    // Config B section: PHS weights rows 11-15, Risk weights rows 20-22
     DATA.config.phsWeights = [getVal(wc,11,1), getVal(wc,12,1), getVal(wc,13,1), getVal(wc,14,1), getVal(wc,15,1)];
     DATA.config.riskWeights = [getVal(wc,20,1), getVal(wc,21,1), getVal(wc,22,1)];
     DATA.config.maxActions = getVal(wc,27,1) || 5;
     DATA.config.ewsBuffer = getVal(wc,28,1) || 10;
-    // Colors (rows 32-36)
+    // Colors rows 32-36
     let cg = getVal(wc,32,1), cy = getVal(wc,33,1), co = getVal(wc,34,1), cr = getVal(wc,35,1), cn = getVal(wc,36,1);
     if (cg) DATA.config.colors.green = cg;
     if (cy) DATA.config.colors.yellow = cy;
     if (co) DATA.config.colors.amber = co;
     if (cr) DATA.config.colors.red = cr;
     if (cn) { DATA.config.colors.navy = cn; document.documentElement.style.setProperty('--navy', cn); }
-    // Apply custom colors to CSS
     if (cg) document.documentElement.style.setProperty('--green', cg);
     if (cy) document.documentElement.style.setProperty('--yellow', cy);
     if (co) document.documentElement.style.setProperty('--amber', co);
@@ -791,6 +839,53 @@ function parseWorkbook(wb) {
     let ccn = getVal(wc,5,1), cpn = getVal(wc,6,1);
     if (ccn) DATA.companyName = ccn;
     if (cpn) DATA.projectName = cpn;
+    // Section F: RAG thresholds rows 41-58 (0-indexed)
+    // CPI: rows 41,42,43 → col B(1)
+    let rv = (r,c=1) => { let v = getVal(wc,r,c); return v !== null && v !== undefined ? Number(v) : null; };
+    let r = DATA.config.rag;
+    r.cpiG = rv(41) ?? r.cpiG; r.cpiY = rv(42) ?? r.cpiY; r.cpiO = rv(43) ?? r.cpiO;
+    r.spiG = rv(44) ?? r.spiG; r.spiY = rv(45) ?? r.spiY; r.spiO = rv(46) ?? r.spiO;
+    r.sriG = rv(47) ?? r.sriG; r.sriY = rv(48) ?? r.sriY; r.sriO = rv(49) ?? r.sriO;
+    r.peiG = rv(50) ?? r.peiG; r.peiY = rv(51) ?? r.peiY; r.peiO = rv(52) ?? r.peiO;
+    r.criG = rv(53) ?? r.criG; r.criY = rv(54) ?? r.criY; r.criO = rv(55) ?? r.criO;
+    r.phsG = rv(56) ?? r.phsG; r.phsY = rv(57) ?? r.phsY; r.phsO = rv(58) ?? r.phsO;
+    // Section G: EWS specific buffers rows 64-66
+    let eb = DATA.config.ewsBuf;
+    eb.firstShipment = rv(64) ?? eb.firstShipment;
+    eb.progress      = rv(65) ?? eb.progress;
+    eb.offtaker      = rv(66) ?? eb.offtaker;
+    // Section H: Likelihood criteria rows 71-75 (0-indexed)
+    for (let i = 0; i < 5; i++) {
+      let row = 71 + i;
+      let cat  = getVal(wc, row, 1);
+      let prob = getVal(wc, row, 2);
+      let note = getVal(wc, row, 3);
+      if (cat)  DATA.config.likelihood[i].cat  = cat;
+      if (prob) DATA.config.likelihood[i].prob = prob;
+      if (note) DATA.config.likelihood[i].note = note;
+    }
+    // Section I: Consequence criteria rows 81-85 (0-indexed)
+    for (let i = 0; i < 5; i++) {
+      let row = 81 + i;
+      let cat    = getVal(wc, row, 1);
+      let desc1  = getVal(wc, row, 2);
+      let desc2  = getVal(wc, row, 3);
+      if (cat)   DATA.config.consequence[i].cat   = cat;
+      if (desc1 !== null) DATA.config.consequence[i].desc1 = String(desc1);
+      if (desc2 !== null) DATA.config.consequence[i].desc2 = String(desc2);
+    }
+    // Section J: Risk level boundaries rows 91-95 (0-indexed)
+    for (let i = 0; i < 5; i++) {
+      let row = 91 + i;
+      let name = getVal(wc, row, 0);
+      let lo   = getVal(wc, row, 1);
+      let hi   = getVal(wc, row, 2);
+      let idx  = getVal(wc, row, 3);
+      if (name) DATA.config.riskLevels[i].name     = name;
+      if (lo)   DATA.config.riskLevels[i].scaleMin  = Number(lo);
+      if (hi)   DATA.config.riskLevels[i].scaleMax  = Number(hi);
+      if (idx)  DATA.config.riskLevels[i].idxRange  = idx;
+    }
   }
 
   // INPUT BULANAN
@@ -1076,7 +1171,17 @@ window.onload = () => {
     try {
       let p = JSON.parse(saved);
       if (p.version === 'v3') {
+        // Backup the default config to preserve new fields (like rag, likelihood) not present in older caches
+        let baseConfig = JSON.parse(JSON.stringify(DATA.config));
         DATA = p;
+        if (!DATA.config) DATA.config = baseConfig;
+        else {
+          DATA.config.rag = DATA.config.rag || baseConfig.rag;
+          DATA.config.likelihood = DATA.config.likelihood || baseConfig.likelihood;
+          DATA.config.consequence = DATA.config.consequence || baseConfig.consequence;
+          DATA.config.riskLevels = DATA.config.riskLevels || baseConfig.riskLevels;
+          DATA.config.ewsBuf = DATA.config.ewsBuf || baseConfig.ewsBuf;
+        }
         document.getElementById('syncNote').style.display = 'none';
       }
     } catch (e){}
@@ -1226,23 +1331,30 @@ function downloadHistoryExcel(index) {
 }
 
 
-// --- SHEET LOGIC ---
-function switchSheet(tabId) {
-  document.querySelectorAll('.sheet-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.sheet-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  document.querySelector(`.sheet-tab[onclick="switchSheet('${tabId}')"]`).classList.add('active');
-  
-  if (tabId === 'tab-history') {
-    renderHistoryModal();
-  }
-}
-
 // --- HISTORY LOGIC ---
+const historyModal = document.getElementById('historyModal');
+const btnHistory = document.getElementById('btnHistory');
+const btnCloseHistory = document.getElementById('btnCloseHistory');
 const historyList = document.getElementById('historyList');
 
+function openHistoryModal() {
+  renderHistoryModal();
+  historyModal.style.display = 'flex';
+}
+btnHistory.addEventListener('click', openHistoryModal);
+
+function closeHistoryModal() {
+  historyModal.style.display = 'none';
+}
+btnCloseHistory.addEventListener('click', closeHistoryModal);
+
+historyModal.addEventListener('click', (e) => {
+  if (e.target === historyModal) {
+    historyModal.style.display = 'none';
+  }
+});
+
 function renderHistoryModal() {
-  document.getElementById("eyebrowTextHist").innerText = DATA.config?.companyName + " · " + DATA.config?.projectName;
   let historyRaw = localStorage.getItem('projectHealthHistoryData');
   let history = historyRaw ? JSON.parse(historyRaw) : [];
   
@@ -1251,14 +1363,16 @@ function renderHistoryModal() {
     return;
   }
   
-  historyList.innerHTML = history.map((h, i) => `
+  historyList.innerHTML = history.map((h, i) => {
+    let phsStr = (h.data && h.data.phs !== undefined) ? h.data.phs.toFixed(1) + '%' : '-';
+    return `
     <div class="history-item" draggable="true" 
          ondragstart="handleDragStart(event, ${i})" 
          ondragover="handleDragOver(event)" 
          ondrop="handleDrop(event, ${i})" 
          ondragend="handleDragEnd(event)">
       <div class="history-info" style="cursor: grab; flex: 1;">
-        <div class="history-period">Periode: ${h.period}</div>
+        <div class="history-period">Periode: ${h.period} <span style="margin-left:8px; font-size:11px; font-weight:normal; color:var(--text-hi); background:rgba(128,128,128,0.15); padding:2px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.2);">PHS: ${phsStr}</span></div>
         <div class="history-time">Diimpor pada: ${h.timestamp}</div>
       </div>
       <div class="history-actions" style="display: flex; gap: 4px;">
@@ -1268,8 +1382,8 @@ function renderHistoryModal() {
         <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 10px; font-size: 11px; margin-left: 4px;">Muat</button>
         <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 10px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 window.loadHistory = function(index) {
@@ -1281,7 +1395,7 @@ window.loadHistory = function(index) {
     localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
     renderDashboard();
     document.getElementById('syncNote').style.display = 'none';
-    switchSheet('tab-dashboard');
+    historyModal.style.display = 'none';
   }
 };
 
@@ -1293,6 +1407,7 @@ window.deleteHistory = function(index) {
   history.splice(index, 1);
   localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
   renderHistoryModal();
+  renderSheetTabs();
 };
 
 window.moveHistory = function(index, direction) {
@@ -1311,16 +1426,17 @@ window.moveHistory = function(index, direction) {
   } else {
     return;
   }
-  
   localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
   renderHistoryModal();
+  renderSheetTabs();
 };
 
+// --- DRAG LOGIC ---
 let draggedIndex = null;
 window.handleDragStart = function(e, index) {
   draggedIndex = index;
   e.dataTransfer.effectAllowed = 'move';
-  setTimeout(() => e.target.style.opacity = '0.5', 0);
+  e.target.style.opacity = '0.5';
 };
 window.handleDragOver = function(e) {
   e.preventDefault();
@@ -1340,18 +1456,36 @@ window.handleDrop = function(e, targetIndex) {
   localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
   draggedIndex = null;
   renderHistoryModal();
+  renderSheetTabs();
 };
 window.handleDragEnd = function(e) {
   e.target.style.opacity = '1';
   draggedIndex = null;
 };
 
-btnHistory.addEventListener('click', () => {
-  renderHistoryModal();
-
-});
-
-
+// --- SHEET TABS LOGIC ---
+function renderSheetTabs() {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  let history = historyRaw ? JSON.parse(historyRaw) : [];
+  
+  if (history.length === 0) {
+    if (DATA && DATA.period) {
+      document.querySelector('.sheet-tabs').innerHTML = `<div class="sheet-tab active">${DATA.period}</div>`;
+    } else {
+      document.querySelector('.sheet-tabs').innerHTML = `<div class="sheet-tab active">Dashboard</div>`;
+    }
+    return;
+  }
+  
+  let currentPeriod = DATA?.period || '';
+  
+  let tabsHtml = history.map((h, i) => {
+    let isActive = h.period === currentPeriod ? 'active' : '';
+    return `<div class="sheet-tab ${isActive}" onclick="loadHistory(${i})">${h.period}</div>`;
+  }).join('');
+  
+  document.querySelector('.sheet-tabs').innerHTML = tabsHtml;
+}
 
 // --- CELL DETAIL MODAL LOGIC ---
 const cellDetailModal = document.getElementById('cellDetailModal');
@@ -1401,7 +1535,20 @@ function showDetailModal(title, htmlContent) {
 }
 
 const cellConfigs = [
-  { sel: '.c-phs', title: 'Overall Project Health Score (PHS)', render: () => `
+  { sel: '.c-phs', title: 'Overall Project Health Score (PHS)', render: () => {
+      let t = DATA.phs;
+      let R = DATA.config.rag;
+      let r1 = t >= R.phsG ? 'background: rgba(128,128,128,0.15);' : '';
+      let r2 = t >= R.phsY && t < R.phsG ? 'background: rgba(128,128,128,0.15);' : '';
+      let r3 = t >= R.phsO && t < R.phsY ? 'background: rgba(128,128,128,0.15);' : '';
+      let r4 = t < R.phsO ? 'background: rgba(128,128,128,0.15);' : '';
+      let marker = '<span style="margin-left: 8px; background: var(--orange); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;">← Posisi Saat Ini</span>';
+      
+      let cpiVal = DATA.evm.ac ? DATA.evm.ev / DATA.evm.ac : 0;
+      let spiVal = DATA.evm.pv ? DATA.evm.ev / DATA.evm.pv : 0;
+      let w = DATA.config.phsWeights;
+      
+      return `
       <p>PHS merupakan komposit dari 5 pilar utama dengan bobot yang dapat disesuaikan (default masing-masing 20%).</p>
       <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Pilar</th><th>Skor (0-100)</th><th>Bobot</th><th>Nilai Komposit</th></tr>
@@ -1410,22 +1557,141 @@ const cellConfigs = [
         <tr><td>Supply Readiness (SRI)</td><td>${DATA.sri.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[2]*100).toFixed(0)}%</td><td>${(DATA.sri.total * DATA.config.phsWeights[2]).toFixed(2)}%</td></tr>
         <tr><td>Project Execution (PEI)</td><td>${DATA.pei.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[3]*100).toFixed(0)}%</td><td>${(DATA.pei.total * DATA.config.phsWeights[3]).toFixed(2)}%</td></tr>
         <tr><td>Commercial Readiness (CRI)</td><td>${DATA.cri.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[4]*100).toFixed(0)}%</td><td>${(DATA.cri.total * DATA.config.phsWeights[4]).toFixed(2)}%</td></tr>
-        <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total PHS</td><td></td><td>100%</td><td>${DATA.phs.score.toFixed(2)}%</td></tr>
+        <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total PHS</td><td></td><td>100%</td><td>${DATA.phs.toFixed(2)}%</td></tr>
       </table>
-  `},
+      
+      <div style="margin-top: 20px; background: var(--cell-bg); border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden;">
+        <div style="background: var(--cell-bg); padding: 12px 15px; border-bottom: 1px solid var(--panel-border); font-weight: bold; color: var(--text-hi); font-size: 13px; display: flex; align-items: center; gap: 8px;">
+          <svg width="14" height="14" fill="var(--blue)" viewBox="0 0 16 16"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></svg>
+          Rumus Kalkulasi Project Health Score (PHS)
+        </div>
+        <div style="padding: 15px;">
+          <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.5px;">BENTUK RUMUS DASAR:</div>
+          <div style="font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; line-height: 1.6; color: var(--text-hi); background: var(--cell-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--panel-border); margin-bottom: 15px; overflow-x: auto; white-space: nowrap;">
+            <span style="color:var(--text-mid);">PHS = </span>
+            <span style="color:var(--green);">(Skor Financial × Bobot)</span> <span style="color:var(--text-mid);">+</span> 
+            <span style="color:var(--green);">(Skor Schedule × Bobot)</span> <span style="color:var(--text-mid);">+</span> 
+            <span style="color:var(--yellow);">(Skor SRI × Bobot)</span> <span style="color:var(--text-mid);">+</span> 
+            <span style="color:var(--orange);">(Skor PEI × Bobot)</span> <span style="color:var(--text-mid);">+</span> 
+            <span style="color:var(--red);">(Skor CRI × Bobot)</span> 
+          </div>
+          <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.5px;">SIMULASI NILAI AKTUAL ANDA:</div>
+          <div style="font-family: 'Consolas', 'Courier New', monospace; font-size: 10.5px; line-height: 2; background: rgba(52, 152, 219, 0.05); border: 1px solid rgba(52, 152, 219, 0.2); padding: 12px 10px; border-radius: 6px; color: var(--text-hi);">
+            <div style="display:flex; align-items:center; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px; gap:4px; white-space:nowrap;">
+              <span style="color:var(--text-mid); font-weight:bold; margin-right:4px;">PHS = </span>
+              <span style="background:rgba(46, 204, 113, 0.15); padding:2px 5px; border-radius:4px; border:1px solid rgba(46,204,113,0.3); color:var(--green);">
+                (${(Math.min(cpiVal, 1)*100).toFixed(2)} × ${(w[0]*100).toFixed(0)}%)
+              </span>
+              <span style="color:var(--text-mid);">+</span>
+              <span style="background:rgba(46, 204, 113, 0.15); padding:2px 5px; border-radius:4px; border:1px solid rgba(46,204,113,0.3); color:var(--green);">
+                (${(Math.min(spiVal, 1)*100).toFixed(2)} × ${(w[1]*100).toFixed(0)}%)
+              </span>
+              <span style="color:var(--text-mid);">+</span>
+              <span style="background:rgba(241, 196, 15, 0.15); padding:2px 5px; border-radius:4px; border:1px solid rgba(241,196,15,0.3); color:var(--yellow);">
+                (${DATA.sri.total.toFixed(2)} × ${(w[2]*100).toFixed(0)}%)
+              </span>
+              <span style="color:var(--text-mid);">+</span>
+              <span style="background:rgba(230, 126, 34, 0.15); padding:2px 5px; border-radius:4px; border:1px solid rgba(230,126,34,0.3); color:var(--orange);">
+                (${DATA.pei.total.toFixed(2)} × ${(w[3]*100).toFixed(0)}%)
+              </span>
+              <span style="color:var(--text-mid);">+</span>
+              <span style="background:rgba(231, 76, 60, 0.15); padding:2px 5px; border-radius:4px; border:1px solid rgba(231,76,60,0.3); color:var(--red);">
+                (${DATA.cri.total.toFixed(2)} × ${(w[4]*100).toFixed(0)}%)
+              </span>
+            </div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(128,128,128,0.15); display:flex; align-items:center; gap:12px;">
+              <span style="color:var(--text-mid); font-weight:bold;">=</span>
+              <span style="font-size: 16px; font-weight: bold; color: var(--blue); background: rgba(52, 152, 219, 0.2); padding: 6px 16px; border-radius: 6px; border: 1px solid rgba(52, 152, 219, 0.5); box-shadow: 0 2px 8px var(--cell-bg);">
+                ${DATA.phs.toFixed(2)}%
+              </span>
+            </div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed rgba(128,128,128,0.15); display:flex; flex-direction:column; gap:8px; font-size:11px; line-height:1.5; color:var(--text-dim); background:var(--cell-bg); padding:10px; border-radius:4px;">
+              <div style="font-weight:bold; color:var(--text-hi); margin-bottom:2px;">Keterangan Skor:</div>
+              <div><b style="color:var(--green);">Skor Financial:</b> Persentase dari Cost Performance Index (CPI).<br/>Rumus: (Earned Value / Actual Cost) × 100%.<br/>Aktual Anda: (${DATA.evm.ev || 0} / ${DATA.evm.ac || 1}) × 100% = ${(cpiVal*100).toFixed(2)}% <i style="opacity:0.7;">(Maksimal diakui 100%)</i>.</div>
+              <div><b style="color:var(--green);">Skor Schedule:</b> Persentase dari Schedule Performance Index (SPI).<br/>Rumus: (Earned Value / Planned Value) × 100%.<br/>Aktual Anda: (${DATA.evm.ev || 0} / ${DATA.evm.pv || 1}) × 100% = ${(spiVal*100).toFixed(2)}% <i style="opacity:0.7;">(Maksimal diakui 100%)</i>.</div>
+              <div><b style="color:var(--yellow);">Skor SRI, PEI, CRI:</b> Berasal dari total penjumlahan sub-parameter di tiap kategori (Tabel Bagian 2). Rincian lengkap ada di menu Sub-Index Readiness.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Kriteria Kesehatan Proyek (Berdasarkan Skor PHS)</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--panel-border); ${r1}"><td style="padding:6px 8px; width:120px;">${R.phsG.toFixed(0)} – 100</td><td style="font-weight:bold; color:var(--green); width:150px;">Aman / Sehat</td><td style="color:var(--text-dim);">Kondisi sangat baik. ${t >= R.phsG ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r2}"><td style="padding:6px 8px;">${R.phsY.toFixed(0)} – ${(R.phsG-1).toFixed(0)}</td><td style="font-weight:bold; color:var(--yellow); width:150px;">Perhatian</td><td style="color:var(--text-dim);">Terdapat kendala minor. ${t >= R.phsY && t < R.phsG ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r3}"><td style="padding:6px 8px;">${R.phsO.toFixed(0)} – ${(R.phsY-1).toFixed(0)}</td><td style="font-weight:bold; color:var(--orange); width:150px;">Waspada</td><td style="color:var(--text-dim);">Kendala signifikan, butuh perhatian ekstra. ${t >= R.phsO && t < R.phsY ? marker : ''}</td></tr>
+          <tr style="${r4}"><td style="padding:6px 8px;">0 – ${(R.phsO-1).toFixed(0)}</td><td style="font-weight:bold; color:var(--red); width:150px;">Kritis</td><td style="color:var(--text-dim);">Proyek dalam bahaya. ${t < R.phsO ? marker : ''}</td></tr>
+        </table>
+      </div>
+      `;
+  }},
   { sel: '.c-sub', title: 'Sub-Index Readiness & Performance', render: () => {
       let html = `<p>Rincian perhitungan Sub-Index Readiness (SRI, PEI, CRI) berdasarkan parameter dan bobot.</p>`;
-      const renderTbl = (name, items, total) => {
+      const renderTbl = (name, items, total, statusTxt, color) => {
         let rows = items.map(i => `<tr><td>${i[0]}</td><td>${i[1].toFixed(2)}</td><td>${(i[2]*100).toFixed(0)}%</td><td>${(i[1]*i[2]).toFixed(2)}</td></tr>`).join('');
-        return `<h4 style="margin-top:20px; color:var(--text-hi);">${name} (Total: ${total.toFixed(2)}%)</h4><table style="width:100%; border-collapse:collapse; margin-bottom:15px;"><tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Parameter</th><th>Skor</th><th>Bobot</th><th>Nilai</th></tr>${rows}</table>`;
+        return `<h4 style="margin-top:20px; color:var(--text-hi); display:flex; align-items:center; gap:10px;">
+          <span>${name} (Total: ${total.toFixed(2)}%)</span>
+          <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:${color}30; border:1px solid ${color}; color:${color}; font-weight:bold; letter-spacing:0.5px;">${statusTxt}</span>
+        </h4>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:15px;"><tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Parameter</th><th>Skor</th><th>Bobot</th><th>Nilai</th></tr>${rows}</table>`;
       };
-      html += renderTbl('Supply Readiness Index (SRI)', DATA.sri.items, DATA.sri.total);
-      html += renderTbl('Project Execution Index (PEI)', DATA.pei.items, DATA.pei.total);
-      html += renderTbl('Commercial Readiness Index (CRI)', DATA.cri.items, DATA.cri.total);
+      
+      let R = DATA.config.rag;
+      
+      let getStatus = (val, g, y, o) => val >= g ? ['Aman', 'var(--green)'] : val >= y ? ['Perhatian', 'var(--yellow)'] : val >= o ? ['Waspada', 'var(--orange)'] : ['Kritis', 'var(--red)'];
+      
+      let stSRI = getStatus(DATA.sri.total, R.sriG, R.sriY, R.sriO);
+      let stPEI = getStatus(DATA.pei.total, R.peiG, R.peiY, R.peiO);
+      let stCRI = getStatus(DATA.cri.total, R.criG, R.criY, R.criO);
+
+      html += renderTbl('Supply Readiness Index (SRI)', DATA.sri.items, DATA.sri.total, stSRI[0], stSRI[1]);
+      html += renderTbl('Project Execution Index (PEI)', DATA.pei.items, DATA.pei.total, stPEI[0], stPEI[1]);
+      html += renderTbl('Commercial Readiness Index (CRI)', DATA.cri.items, DATA.cri.total, stCRI[0], stCRI[1]);
+      
+      let Rr = DATA.config.rag;
+      html += `
+      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Batas Penilaian (Threshold) Sub-Index</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse; text-align:center;">
+          <tr style="border-bottom:1px solid var(--panel-border);">
+            <th style="padding:6px 8px; text-align:left;">Sub-Index</th>
+            <th style="color:var(--green);">Aman</th>
+            <th style="color:var(--yellow);">Perhatian</th>
+            <th style="color:var(--orange);">Waspada</th>
+            <th style="color:var(--red);">Kritis</th>
+          </tr>
+          <tr style="border-bottom:1px solid var(--panel-border);">
+            <td style="padding:6px 8px; text-align:left;">SRI</td>
+            <td>&ge; ${Rr.sriG}</td><td>${Rr.sriY} – ${Rr.sriG-1}</td><td>${Rr.sriO} – ${Rr.sriY-1}</td><td>&lt; ${Rr.sriO}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--panel-border);">
+            <td style="padding:6px 8px; text-align:left;">PEI</td>
+            <td>&ge; ${Rr.peiG}</td><td>${Rr.peiY} – ${Rr.peiG-1}</td><td>${Rr.peiO} – ${Rr.peiY-1}</td><td>&lt; ${Rr.peiO}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 8px; text-align:left;">CRI</td>
+            <td>&ge; ${Rr.criG}</td><td>${Rr.criY} – ${Rr.criG-1}</td><td>${Rr.criO} – ${Rr.criY-1}</td><td>&lt; ${Rr.criO}</td>
+          </tr>
+        </table>
+        <p style="font-size:11px; color:var(--text-dim); margin-top:8px;">* Nilai ambang batas ini dapat Anda ubah melalui Sheet <b>Config</b> di Excel.</p>
+      </div>`;
+      
       return html;
   }},
   { sel: '.c-fin', title: 'Key Financial & Schedule (EVM)', render: () => `
       <p>Metrik Earned Value Management (EVM) digunakan untuk mengukur kinerja biaya dan jadwal proyek.</p>
+      
+      <div style="margin-top: 15px; margin-bottom: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Panduan Warna Indikator</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; width:70px; font-weight:bold; color:var(--green);">Hijau</td><td style="color:var(--text-dim);">Kinerja sangat baik (Sesuai/melebihi target batas atas). Untuk selisih biaya (CV) dan waktu (SV) bernilai positif (+).</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; font-weight:bold; color:var(--yellow);">Kuning</td><td style="color:var(--text-dim);">Kinerja waspada (Masih masuk dalam batas toleransi target).</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Kinerja buruk (Di bawah batas toleransi). Untuk selisih (CV/SV) bernilai negatif (-).</td></tr>
+          <tr><td style="padding:2px 5px; font-weight:bold; color:var(--navy);">Hitam/Biru</td><td style="color:var(--text-dim);">Nilai referensi atau baseline (seperti Net Present Value).</td></tr>
+        </table>
+      </div>
+
       <ul style="padding-left:20px; margin-bottom:20px;">
         <li><b>PV (Planned Value)</b>: Anggaran yang direncanakan s.d periode ini (USD ${DATA.evm.pv} Juta)</li>
         <li><b>EV (Earned Value)</b>: Nilai pekerjaan yang telah diselesaikan (USD ${DATA.evm.ev} Juta)</li>
@@ -1449,14 +1715,24 @@ const cellConfigs = [
         <tr><td>Actual Cost (AC)</td><td>${DATA.evm.ac}</td></tr>
         <tr><td>Net Present Value (NPV)</td><td>${DATA.evm.npv}</td></tr>
       </table>
+      
+      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Indikator Warna EVM</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px; width:160px;">CPI & SPI >= 1.00</td><td style="font-weight:bold; color:var(--green); width:80px;">Hijau</td><td style="color:var(--text-dim);">Efisiensi / Sesuai Rencana</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px;">CPI & SPI < 1.00</td><td style="font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Overbudget / Terlambat</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px;">CV & SV >= 0</td><td style="font-weight:bold; color:var(--green);">Hijau</td><td style="color:var(--text-dim);">Surplus (Positif)</td></tr>
+          <tr><td style="padding:6px 8px;">CV & SV < 0</td><td style="font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Defisit (Negatif)</td></tr>
+        </table>
+      </div>
   `},
   { sel: '.c-lvl', title: 'Overall Risk Level', render: () => {
       let t = DATA.riskIndex.total;
-      let r1 = t <= 20 ? 'background: rgba(255,255,255,0.1);' : '';
-      let r2 = t > 20 && t <= 40 ? 'background: rgba(255,255,255,0.1);' : '';
-      let r3 = t > 40 && t <= 60 ? 'background: rgba(255,255,255,0.1);' : '';
-      let r4 = t > 60 && t <= 80 ? 'background: rgba(255,255,255,0.1);' : '';
-      let r5 = t > 80 ? 'background: rgba(255,255,255,0.1);' : '';
+      let r1 = t <= 20 ? 'background: rgba(128,128,128,0.15);' : '';
+      let r2 = t > 20 && t <= 40 ? 'background: rgba(128,128,128,0.15);' : '';
+      let r3 = t > 40 && t <= 60 ? 'background: rgba(128,128,128,0.15);' : '';
+      let r4 = t > 60 && t <= 80 ? 'background: rgba(128,128,128,0.15);' : '';
+      let r5 = t > 80 ? 'background: rgba(128,128,128,0.15);' : '';
       let marker = '<span style="margin-left: 8px; background: var(--orange); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;">← Posisi Saat Ini</span>';
 
       return `
@@ -1469,34 +1745,85 @@ const cellConfigs = [
         <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total Skor Risiko</td><td></td><td>100%</td><td>${DATA.riskIndex.total.toFixed(2)}</td></tr>
       </table>
 
-      <div style="margin-top: 20px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
         <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Kriteria Penentuan Level Risiko (Berdasarkan Skor)</div>
         <table style="width:100%; font-size:12px; border-collapse:collapse;">
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r1}"><td style="padding:6px 8px; width:120px;">0.00 – 20.00</td><td style="font-weight:bold; color:#538135; width:130px;">Low</td><td style="color:var(--text-dim);">Risiko sangat terkendali. ${t <= 20 ? marker : ''}</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r2}"><td style="padding:6px 8px;">20.01 – 40.00</td><td style="font-weight:bold; color:#A9D18E;">Low to Moderate</td><td style="color:var(--text-dim);">Terkendali, butuh pemantauan rutin. ${t > 20 && t <= 40 ? marker : ''}</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r3}"><td style="padding:6px 8px;">40.01 – 60.00</td><td style="font-weight:bold; color:#FFD966;">Moderate</td><td style="color:var(--text-dim);">Perlu tindakan mitigasi terencana. ${t > 40 && t <= 60 ? marker : ''}</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r4}"><td style="padding:6px 8px;">60.01 – 80.00</td><td style="font-weight:bold; color:#F4B183;">Moderate to High</td><td style="color:var(--text-dim);">Beresiko, butuh intervensi manajemen. ${t > 60 && t <= 80 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r1}"><td style="padding:6px 8px; width:120px;">0.00 – 20.00</td><td style="font-weight:bold; color:#538135; width:130px;">Low</td><td style="color:var(--text-dim);">Risiko sangat terkendali. ${t <= 20 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r2}"><td style="padding:6px 8px;">20.01 – 40.00</td><td style="font-weight:bold; color:#A9D18E;">Low to Moderate</td><td style="color:var(--text-dim);">Terkendali, butuh pemantauan rutin. ${t > 20 && t <= 40 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r3}"><td style="padding:6px 8px;">40.01 – 60.00</td><td style="font-weight:bold; color:#FFD966;">Moderate</td><td style="color:var(--text-dim);">Perlu tindakan mitigasi terencana. ${t > 40 && t <= 60 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border); ${r4}"><td style="padding:6px 8px;">60.01 – 80.00</td><td style="font-weight:bold; color:#F4B183;">Moderate to High</td><td style="color:var(--text-dim);">Beresiko, butuh intervensi manajemen. ${t > 60 && t <= 80 ? marker : ''}</td></tr>
           <tr style="${r5}"><td style="padding:6px 8px;">80.01 – 100.00</td><td style="font-weight:bold; color:#E06666;">High</td><td style="color:var(--text-dim);">Risiko kritis, butuh aksi eksekutif segera. ${t > 80 ? marker : ''}</td></tr>
         </table>
       </div>
       `;
   }},
   { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => {
+      let Lc = DATA.config.likelihood;
+      let Cc = DATA.config.consequence;
+      let RL = DATA.config.riskLevels;
+
+      // Risk level legend
+      let lvlColors = ['#538135','#A9D18E','#FFD966','#F4B183','#E06666'];
+      let lvlRows = RL.map((lv, i) =>
+        `<tr style="border-bottom:1px solid var(--panel-border);">
+           <td style="padding:2px 5px;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${lvlColors[i]};margin-right:6px;"></span><b>${lv.name}</b></td>
+           <td style="padding:2px 5px;">Skala ${lv.scaleMin}–${lv.scaleMax}</td>
+           <td style="padding:2px 5px; color:var(--text-dim);">Risk Index ${lv.idxRange}</td>
+         </tr>`
+      ).join('');
+
+      // Likelihood table
+      let lRows = Lc.map(lv =>
+        `<tr style="border-bottom:1px solid var(--panel-border);">
+           <td style="padding:2px 5px; font-weight:bold; text-align:center;">${lv.l}</td>
+           <td style="padding:2px 5px;">${lv.cat}</td>
+           <td style="padding:2px 5px; color:var(--text-dim);">${lv.prob} — ${lv.note}</td>
+         </tr>`
+      ).join('');
+
+      // Consequence table
+      let cRows = Cc.map((cv) => {
+        let text1 = cv.desc1 ? cv.desc1 : '';
+        let text2 = cv.desc2 ? ` ; ${cv.desc2}` : '';
+        return `<tr style="border-bottom:1px solid var(--panel-border);">
+           <td style="padding:2px 5px; font-weight:bold; text-align:center;">${cv.c}</td>
+           <td style="padding:2px 5px;">${cv.cat}</td>
+           <td style="padding:2px 5px; color:var(--text-dim);">${text1}${text2}</td>
+         </tr>`;
+      }).join('');
+
       let html = `
-      <p>Sebaran risiko berdasarkan Matriks L x C (Likelihood x Consequence).</p>
-      <p>Warna mewakili tingkat keparahan risiko:</p>
-      <ul style="padding-left:20px; margin-bottom:15px;">
-        <li><b style="color:var(--green);">Hijau (Rendah / Low)</b></li>
-        <li><b style="color:#A9D18E;">Hijau Muda (Low to Moderate)</b></li>
-        <li><b style="color:var(--yellow);">Kuning (Sedang / Moderate)</b></li>
-        <li><b style="color:var(--orange);">Oranye (Moderate to High)</b></li>
-        <li><b style="color:var(--red);">Merah (Tinggi / High)</b></li>
-      </ul>
-      <p>Angka di dalam kotak menunjukkan jumlah risiko (Risk Register) yang berada pada tingkat tersebut.</p>
+      <p>Sebaran risiko berdasarkan Matriks L x C (Likelihood × Consequence). Warna mewakili tingkat keparahan risiko.</p>
+
+      <div style="margin-bottom:16px; padding:10px; background:var(--cell-bg); border-radius:8px;">
+        <div style="font-weight:bold; color:var(--text-hi); margin-bottom:8px;">Klasifikasi Level Risiko</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th style="padding:2px 5px;">Level</th><th>Skala L×C</th><th>Risk Index</th></tr>
+          ${lvlRows}
+        </table>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+        <div style="padding:10px; background:var(--cell-bg); border-radius:8px;">
+          <div style="font-weight:bold; color:var(--text-hi); margin-bottom:8px;">Kriteria Likelihood (L)</div>
+          <table style="width:100%; font-size:11px; border-collapse:collapse;">
+            <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th style="padding:2px 5px;">L</th><th>Kategori</th><th>Probabilitas</th></tr>
+            ${lRows}
+          </table>
+        </div>
+        <div style="padding:10px; background:var(--cell-bg); border-radius:8px;">
+          <div style="font-weight:bold; color:var(--text-hi); margin-bottom:8px;">Kriteria Consequence (C)</div>
+          <table style="width:100%; font-size:11px; border-collapse:collapse;">
+            <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th style="padding:2px 5px;">C</th><th>Kategori</th><th>Dampak</th></tr>
+            ${cRows}
+          </table>
+        </div>
+      </div>
+
       <h4 style="color:var(--text-hi); margin-top:20px;">Daftar Risiko Teratas (Berdasarkan L x C):</h4>
       <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="border-bottom:1px solid var(--panel-border); text-align:left;">
-          <th>Kode</th><th>Deskripsi</th><th>L</th><th>C</th><th>Skala Risiko</th><th>Level Risiko</th>
+          <th>Kode</th><th>Deskripsi</th><th>L</th><th>C</th><th>Skala</th><th>Level Risiko</th>
         </tr>
       `;
       DATA.topRisks.forEach(r => {
@@ -1539,34 +1866,103 @@ const cellConfigs = [
       `;
   }},
   { sel: '.panel-c', title: 'Early Warning System (EWS) Alerts', render: () => {
-      let html = `<p>Sistem Peringatan Dini (EWS) memantau metrik kunci dan memberikan peringatan jika nilainya mendekati atau melewati ambang batas (threshold).</p>`;
+      let html = `<p>Sistem Peringatan Dini (EWS) memantau metrik kunci dan memberikan peringatan jika nilainya mendekati atau melewati ambang batas (threshold). Perhatikan kolom target untuk mengetahui apakah nilai yang lebih tinggi (<b>Higher is better</b>) atau lebih rendah (<b>Lower is better</b>) yang diharapkan.</p>`;
+      
+      let legend = `
+      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px; margin-bottom: 20px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Kriteria Status EWS</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px; width:80px; font-weight:bold; color:var(--green);">Aman</td><td style="color:var(--text-dim);">Nilai aktual masih sesuai/lebih baik dari target batas aman.</td></tr>
+          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px; font-weight:bold; color:var(--orange);">Waspada</td><td style="color:var(--text-dim);">Nilai aktual meleset dari target tetapi masih dalam zona toleransi (buffer).</td></tr>
+          <tr><td style="padding:6px 8px; font-weight:bold; color:var(--red);">Bahaya</td><td style="color:var(--text-dim);">Nilai aktual melampaui batas aman dan toleransi buffer.</td></tr>
+        </table>
+      </div>`;
+      html += legend;
+
       if (DATA.ews.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA PERINGATAN (Aman)</p>`;
+      let alertStrings = [];
       let rows = DATA.ews.map(e => {
-        let delta = (typeof e.val === 'number' && typeof e.thrVal === 'number') ? Math.abs(e.val - e.thrVal).toFixed(2) : '-';
-        let unitStr = (e.unit && e.unit.toLowerCase() !== 'hari') ? ` ${e.unit}` : '';
+        let isPct = String(e.thr).includes('%');
+        let dVal = isPct && typeof e.val === 'number' ? (e.val * 100).toFixed(1) + '%' : e.val;
+        let dThr = isPct && typeof e.thrVal === 'number' ? (e.thrVal * 100).toFixed(1) + '%' : e.thrVal;
+        
+        let deltaStr = '-';
+        if (typeof e.val === 'number' && typeof e.thrVal === 'number') {
+          let delta = Math.abs(e.val - e.thrVal);
+          deltaStr = isPct ? (delta * 100).toFixed(1) + '%' : delta.toFixed(2);
+        } else if (typeof e.val === 'string' && typeof e.thrVal === 'string' && e.val.includes('-') && e.thrVal.includes('-')) {
+          let d1 = new Date(e.val);
+          let d2 = new Date(e.thrVal);
+          if (!isNaN(d1) && !isNaN(d2)) {
+            let diffDays = Math.ceil(Math.abs(d1 - d2) / (1000 * 60 * 60 * 24));
+            deltaStr = diffDays + ' hari';
+          }
+        }
+        
+        // Read status from Excel if available
+        let statusDisplay = calculateEwsStatus(e);
+        
+        if (statusDisplay.toLowerCase() === 'waspada' || statusDisplay.toLowerCase() === 'bahaya') {
+          alertStrings.push(`- ${e.p}: ${dVal} (Status: ${statusDisplay.toUpperCase()})`);
+        }
+        let borderColor = statusDisplay.toLowerCase() === 'bahaya' ? 'var(--red)' : (statusDisplay.toLowerCase() === 'waspada' ? 'var(--orange)' : 'var(--green)');
+        // Format Buffer (stored in e.unit)
+        let dBuffer = e.unit;
+        if (isPct && typeof e.unit === 'number') {
+          dBuffer = (e.unit * 100).toFixed(1) + '%';
+        } else if (typeof e.unit === 'number' && e.unit > 0 && String(e.thr).toLowerCase().includes('target')) {
+          // If it's an absolute number like '30', just display it, optionally with 'hari' if it's a date
+          dBuffer = e.unit + (String(e.thrVal).includes('-') ? ' hari' : '');
+        }
+
         return `
-        <div style="border-left:4px solid var(--orange); padding:12px; margin-top:15px; background:rgba(0,0,0,0.03); border-radius:4px;">
+        <div style="border-left:4px solid ${borderColor}; padding:12px; margin-top:15px; background:rgba(0,0,0,0.03); border-radius:4px;">
           <div style="font-weight:bold; color:var(--text-hi); font-size:15px; margin-bottom:5px;">${e.p}</div>
-          <div>Nilai Saat Ini: <b style="color:var(--text-hi);">${e.val}${unitStr}</b> | Ambang Batas: <b>${e.thr}${unitStr} (Target: ${e.thrVal})</b></div>
-          <div style="margin-top:6px; color:var(--red); font-weight:bold;">Selisih (Val vs Target): ${delta}</div>
-          <div style="margin-top:6px; font-size:11px; color:var(--text-mid);">Implikasi: ${e.impl || '-'}</div>
+          <div style="margin-bottom:4px;">Deskripsi Target: <b>${e.thr}</b></div>
+          <div style="margin-bottom:4px;">Nilai Aktual: <b style="color:var(--text-hi);">${dVal}</b> | Nilai Threshold: <b>${dThr}</b></div>
+          <div style="margin-top:6px; color:${borderColor}; font-weight:bold;">Selisih (Aktual vs Threshold): ${deltaStr}</div>
+          <div style="margin-top:6px; font-size:11px; color:var(--text-mid);">
+            <span style="display:inline-block; margin-right:15px;">Buffer Waspada: <b style="color:var(--text-hi);">${dBuffer}</b></span>
+            <span>Status EWS: <b style="color:${borderColor};">${statusDisplay}</b></span>
+          </div>
         </div>
       `}).join('');
-      return html + rows;
+      let actionBtn = '';
+      if (alertStrings.length > 0) {
+        let emailBody = encodeURIComponent(`Yth. Bapak/Ibu,\n\nBerdasarkan pantauan Project Risk & Health Dashboard, terdapat indikator Early Warning System (EWS) yang memerlukan perhatian segera:\n\n${alertStrings.join('\n')}\n\n[PENTING: MOHON LAMPIRKAN FILE EXCEL DASHBOARD PERIODE INI SECARA MANUAL SEBELUM MENGIRIM EMAIL INI]\n\nMohon arahan dan tindak lanjutnya.\n\nTerima kasih.`);
+        let emailSubject = encodeURIComponent(`[URGENT] Peringatan EWS Dashboard Proyek - Terdapat Status Waspada/Bahaya`);
+        actionBtn = `
+        <div style="margin-bottom: 20px; text-align: right;">
+          <button onclick="let email=prompt('Masukkan alamat email tujuan (Gmail/Google Workspace):');if(email){alert('INFO PENTING: Karena batasan keamanan web browser, file Excel TIDAK DAPAT dilampirkan otomatis.\\n\\nSilakan LAMPIRKAN FILE EXCEL SECARA MANUAL setelah halaman Gmail terbuka.');window.open('https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(email)+'&su=${emailSubject}&body=${emailBody}','_blank');}" class="btn primary" style="background-color: var(--red); border-color: var(--red);">
+            <svg width="14" height="14" fill="#fff" viewBox="0 0 16 16" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/></svg>
+            Kirim Alert via Gmail
+          </button>
+        </div>
+        `;
+      }
+      return html + actionBtn + rows;
   }},
   { sel: '.panel-d', title: 'Executive Actions', render: () => {
-      let html = `<p>Daftar Keputusan dan Tindakan Eksekutif (Level C-Suite / Manajemen Puncak) beserta PIC dan dampaknya.</p>`;
-      if (!DATA.executiveActions || DATA.executiveActions.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA AKSI EKSEKUTIF</p>`;
-      let maxA = DATA.config.maxActions || 3;
-      let rows = DATA.executiveActions.map((a, i) => `
-        <div style="border:1px solid var(--panel-border); border-left:4px solid var(--orange); border-radius:6px; padding:12px; margin-top:15px; background:rgba(0,0,0,0.02); position:relative;">
-          ${i < maxA ? '<div style="position:absolute; top:-10px; right:12px; background:var(--orange); color:#fff; font-size:10px; font-weight:bold; padding:2px 10px; border-radius:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">⭐ PRIORITAS TAMPIL (DASHBOARD)</div>' : ''}
+      if (!DATA.executiveActions || DATA.executiveActions.length === 0) {
+        return `<p>Daftar Keputusan dan Tindakan Eksekutif (Level C-Suite / Manajemen Puncak) beserta PIC dan dampaknya.</p><p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA AKSI EKSEKUTIF</p>`;
+      }
+      
+      let concernActions = DATA.executiveActions.slice(0, DATA.config.maxActions);
+      let priorities = concernActions.map(a => a.prioritas < 999 ? `#${a.prioritas}` : '-').join(', ');
+      
+      let html = `<p>Daftar Keputusan dan Tindakan Eksekutif (Level C-Suite / Manajemen Puncak) beserta PIC dan dampaknya.</p>
+      <div style="padding:10px 15px; background:rgba(228, 98, 46, 0.1); border-left:4px solid var(--orange); margin-bottom:15px; border-radius:4px; font-size:12.5px; color:var(--text-hi);">
+        <b>Fokus Perhatian (Top Concern):</b> Menampilkan ${concernActions.length} aksi prioritas teratas (${priorities}).
+      </div>`;
+      
+      let rows = concernActions.map((a, i) => `
+        <div style="border:1px solid var(--panel-border); border-left:4px solid var(--orange); border-radius:6px; padding:12px; margin-top:15px; background:var(--cell-bg); position:relative;">
           <div style="font-weight:bold; color:var(--text-hi); display:flex; justify-content:space-between; align-items:center;">
             <span>Kategori: ${a.kategori} ${a.prioritas < 999 ? `<span style="font-size:11px; font-weight:normal; color:var(--text-dim); margin-left:8px;">(#${a.prioritas})</span>` : ''}</span>
             <span style="font-size:11px; padding:3px 8px; background:var(--orange); color:#fff; border-radius:4px;">Level: ${a.level}</span>
           </div>
           <div style="margin:10px 0;"><b>Isu:</b> <span style="color:var(--text-hi);">${a.isu}</span></div>
-          <div style="margin:10px 0; padding:10px; background:var(--stage-bg); border-radius:4px;"><b>Tindakan/Keputusan:</b><br/>${a.tindakan}</div>
+          <div style="margin:10px 0; padding:10px; background:var(--stage-bg); border-radius:4px; border:1px solid var(--panel-border);"><b>Tindakan/Keputusan:</b><br/>${a.tindakan}</div>
           <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:20px; color:var(--text-hi);">
             <span><b>PIC:</b> ${a.pic}</span>
             <span><b>Dampak:</b> ${a.dampak}</span>
