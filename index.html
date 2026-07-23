@@ -196,7 +196,7 @@ td b { color: var(--text-hi); }
   position: fixed; top: 50%; left: 50%; z-index: 9999;
   width: 1200px; height: 675px;
   margin: 0; border-radius: 0; box-shadow: none;
-  transform: translate(-50%, -50%) scale(min(calc(100vw / 1200), calc(100vh / 675)));
+  /* Transform will be applied dynamically via JS */
 }
 body.is-fullscreen { overflow: hidden; background: #000; }
 body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
@@ -623,9 +623,9 @@ function renderDashboard() {
     eaHtml = '<div class="action-grid">' + DATA.executiveActions.slice(0, maxA).map(a => `
       <div class="action-card">
         <div class="prio-tag">#${a.prioritas < 999 ? a.prioritas : '-'}</div>
-        <div class="action-content">
+        <div class="action-content" style="min-width: 0;">
           <div class="action-kat">${a.kategori} <span style="font-weight:400; font-size:9.5px; opacity:0.8;">— ${a.level}</span></div>
-          <div>${a.isu}</div>
+          <div style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word; margin: 4px 0;">${a.isu}</div>
           <div class="action-meta">
             <span>PIC: ${a.pic}</span>
           </div>
@@ -1285,6 +1285,17 @@ btnFullscreen.addEventListener('click', () => {
     document.exitFullscreen();
   }
 });
+function updateFullscreenScale() {
+  let stage = document.getElementById('stage');
+  if (document.body.classList.contains('is-fullscreen')) {
+    let scale = Math.min(window.innerWidth / 1200, window.innerHeight / 675);
+    stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  } else {
+    stage.style.transform = 'none';
+  }
+}
+window.addEventListener('resize', updateFullscreenScale);
+
 document.addEventListener('fullscreenchange', () => {
   if (document.fullscreenElement) {
     document.body.classList.add('is-fullscreen');
@@ -1293,6 +1304,7 @@ document.addEventListener('fullscreenchange', () => {
     document.body.classList.remove('is-fullscreen');
     document.getElementById('stage').classList.remove('fullscreen-mode');
   }
+  updateFullscreenScale();
 });
 
 function showDetailModal(title, htmlContent) {
