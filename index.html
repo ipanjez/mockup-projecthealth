@@ -170,7 +170,7 @@ td b { color: var(--text-hi); }
   .panel-b { grid-template-areas: "lvl" "heat" "cnt" "mit"; }
 }
 /* Modal */
-.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 10000; }
 .modal { background: var(--stage-bg); width: 600px; max-width: 90%; border-radius: 12px; border: 1px solid var(--panel-border); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
 .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { margin: 0; font-size: 16px; color: var(--text-hi); }
@@ -208,7 +208,6 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
   <div class="ttl" id="syncNote"><span style="color:var(--amber);font-weight:bold;">⬤ MOCKUP MODE</span> — Menampilkan data statis. Silakan muat file Excel.</div>
   <div id="importStatus"></div>
   <div class="btnrow">
-    <button class="btn" id="btnFullscreen">🖵 Full Screen</button>
     <button class="btn" id="btnToggleDark">🌙 Dark Mode</button>
     <button class="btn" id="btnHistory">🕒 Riwayat</button>
     <button class="btn" id="btnDownloadTpl">⭳ Unduh Template</button>
@@ -217,6 +216,7 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
     <button class="btn" id="btnPng">⭳ PNG</button>
     <button class="btn" id="btnJpg">⭳ JPG</button>
     <button class="btn primary" id="btnPdf">⭳ Export PDF</button>
+    <button class="btn" id="btnFullscreen" title="Full Screen">🖵</button>
   </div>
 </div>
 
@@ -1282,17 +1282,34 @@ const cellConfigs = [
         <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total Skor Risiko</td><td></td><td>100%</td><td>${DATA.riskIndex.total.toFixed(2)}</td></tr>
       </table>
   `},
-  { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => `
+  { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => {
+      let html = `
       <p>Sebaran risiko berdasarkan Matriks L x C (Likelihood x Consequence).</p>
       <p>Warna mewakili tingkat keparahan risiko:</p>
       <ul style="padding-left:20px; margin-bottom:15px;">
         <li><b style="color:var(--green);">Hijau (Rendah / Low)</b></li>
+        <li><b style="color:#A9D18E;">Hijau Muda (Low to Moderate)</b></li>
         <li><b style="color:var(--yellow);">Kuning (Sedang / Moderate)</b></li>
         <li><b style="color:var(--orange);">Oranye (Moderate to High)</b></li>
         <li><b style="color:var(--red);">Merah (Tinggi / High)</b></li>
       </ul>
-      <p>Angka di dalam kotak menunjukkan jumlah risiko (Risk Register) yang berada pada tingkat tersebut. Silakan merujuk pada tabel <b>Risk Register Details</b> di bagian bawah dashboard untuk rincian setiap risiko secara spesifik.</p>
-  `},
+      <p>Angka di dalam kotak menunjukkan jumlah risiko (Risk Register) yang berada pada tingkat tersebut.</p>
+      <h4 style="color:var(--text-hi); margin-top:20px;">Daftar Risiko Teratas (Berdasarkan L x C):</h4>
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="border-bottom:1px solid var(--panel-border); text-align:left;">
+          <th>Kode</th><th>Deskripsi</th><th>L</th><th>C</th><th>Tingkat Risiko</th>
+        </tr>
+      `;
+      DATA.topRisks.forEach(r => {
+        let scale = SCALE_LOOKUP[`${r.L}-${r.C}`] || 1;
+        let bg = getRiskScaleColor(scale);
+        let col = getRiskScaleColorText(scale);
+        let lvl = getRiskLevelName(scale*4);
+        html += `<tr><td><b>${r.code}</b></td><td>${r.desc}</td><td>${r.L}</td><td>${r.C}</td><td><span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; background:${bg}; color:${col};">${lvl}</span></td></tr>`;
+      });
+      html += `</table>`;
+      return html;
+  }},
   { sel: '.c-cnt', title: 'Risk Register Counts', render: () => `
       <p>Rekapitulasi jumlah risiko berdasarkan level ekstremitasnya.</p>
       <ul style="padding-left:20px;">
