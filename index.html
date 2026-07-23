@@ -139,8 +139,11 @@ body.dark .titlebar h1 { color: #E8EDF3; }
 .st-waspada { background: var(--yellow); color: #5C4300 !important; }
 .st-aman { background: var(--green); }
 
-.panel-d { background: var(--cell-bg); color: var(--text-hi); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--panel-border); }
-.panel-d .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.panel-d { background: var(--cell-bg); color: var(--text-hi); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--panel-border); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.cell:hover, .panel-c:hover, .panel-d:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); z-index: 10; border-color: var(--orange); }
+body.dark .cell:hover, body.dark .panel-c:hover, body.dark .panel-d:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+
+.lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .action-grid { display: flex; flex-direction: column; gap: 6px; }
 .action-card { background: rgba(0,0,0,0.03); border: 1px solid var(--panel-border); border-left: 4px solid var(--orange); border-radius: 6px; padding: 6px 10px; display: flex; gap: 8px; align-items: flex-start; }
 body.dark .action-card { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-left: 4px solid var(--orange); }
@@ -318,6 +321,19 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
   </div>
 </div>
 
+<!-- Cell Detail Modal -->
+<div class="modal-overlay" id="cellDetailModal">
+  <div class="modal" style="width: 800px; max-width: 95%;">
+    <div class="modal-header">
+      <h3 id="cellDetailTitle">Detail</h3>
+      <button class="modal-close" id="btnCloseCellDetail">&times;</button>
+    </div>
+    <div class="modal-body" id="cellDetailBody" style="color: var(--text-mid); line-height: 1.5; font-size: 13px;">
+      <!-- Content dynamically injected here -->
+    </div>
+  </div>
+</div>
+
 <script>
 // --- DEFAULT MOCK DATA v3 ---
 let DATA = {
@@ -369,6 +385,11 @@ let DATA = {
     { code: 'C2', desc: 'Commissioning Delay', kat: 'Eksekusi', L: 5, C: 5 },
     { code: 'C3', desc: 'EPC Interface Issue', kat: 'Eksekusi', L: 4, C: 4 },
     { code: 'C4', desc: 'Long Lead Equipment', kat: 'Pengadaan', L: 3, C: 3 }
+  ],
+  ews: [
+    { p: 'First Shipment', thr: 'Target (Threshold)', thrVal: '2026-03-15', val: '2026-04-01', unit: '', impl: 'Keterlambatan pengiriman pertama berpotensi memicu klaim dari Offtaker utama.' },
+    { p: 'Project Progress', thr: 'Min. 80%', thrVal: 90, val: 88, unit: '%', impl: 'Keterlambatan progres berpotensi menunda tahap commissioning.' },
+    { p: 'Offtaker Agreement', thr: 'SPI >= 1,00', thrVal: 70, val: 60, unit: '%', impl: 'Belum tercapainya kuota offtake minimal mengancam kelayakan finansial operasi.' }
   ],
   ews: [
     { p: 'First Shipment', thr: 'Target (Threshold)', thrVal: '2026-03-15', val: '2026-04-01', unit: '', impl: 'Keterlambatan pengiriman pertama berpotensi memicu klaim dari Offtaker utama.' },
@@ -594,13 +615,12 @@ function renderDashboard() {
 
   // Executive Actions (Priority rendering)
   let maxA = DATA.config.maxActions || 3;
-  // Render Executive Actions Text
   let eaHtml = '';
   if (!DATA.executiveActions || DATA.executiveActions.length === 0) {
     eaHtml = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px;">Tidak ada aksi eksekutif</div>';
   } else {
     // Show top 3 for dashboard
-    eaHtml = '<div class="action-grid">' + DATA.executiveActions.slice(0, 3).map(a => `
+    eaHtml = '<div class="action-grid">' + DATA.executiveActions.slice(0, maxA).map(a => `
       <div class="action-card">
         <div class="prio-tag">#${a.prioritas < 999 ? a.prioritas : '-'}</div>
         <div class="action-content">
@@ -613,6 +633,7 @@ function renderDashboard() {
       </div>
     `).join('') + '</div>';
   }
+  
   document.getElementById('execActionsText').innerHTML = eaHtml;
 
   // Tables
@@ -933,42 +954,6 @@ function parseWorkbook(wb) {
     }
     if (newTopRisks.length > 0) DATA.topRisks = newTopRisks;
   }
-
-  // ACTIONS (Sheet Risk_Action_Tracker)
-  let wa = wb.Sheets['Risk_Action_Tracker'];
-  if (wa) {
-    let r = 5; // row 6 (0-indexed = 5)
-    let newActions = [];
-    while (r <= 100) {
-      let no = getVal(wa, r, 0); // Col A
-      let isu = getVal(wa, r, 1); // Col B
-      if (!isu) { r++; continue; }
-      if (typeof isu === 'string' && (isu.toLowerCase().includes('isu') || isu.toLowerCase().includes('peristiwa') || isu.toLowerCase().includes('sumber'))) {
-        r++;
-        continue;
-      }
-      let kat = getVal(wa, r, 2) || '';
-      let keput = getVal(wa, r, 3) || '';
-      let pic = getVal(wa, r, 4) || '';
-      let dampak = getVal(wa, r, 5) || '';
-      let prioVal = getVal(wa, r, 7); // Col H (0-indexed = 7) Prioritas Dashboard
-      let prio = parseInt(prioVal);
-      if (isNaN(prio)) prio = parseInt(no) || (newActions.length + 1);
-      newActions.push({
-        no: parseInt(no) || (newActions.length + 1),
-        isu: String(isu),
-        kat: String(kat),
-        keput: String(keput),
-        pic: String(pic),
-        dampak: String(dampak),
-        prio: prio,
-        lvl: '-'
-      });
-      r++;
-    }
-    newActions.sort((a, b) => a.prio - b.prio);
-    if (newActions.length > 0) DATA.actions = newActions;
-  }
 }
 
 // --- INIT & EVENTS ---
@@ -1183,200 +1168,10 @@ historyModal.addEventListener('click', (e) => {
   }
 });
 
-document.getElementById('btnCloseCellDetail').addEventListener('click', () => cellDetailModal.style.display = 'none');
-cellDetailModal.addEventListener('click', e => { if(e.target === cellDetailModal) cellDetailModal.style.display = 'none'; });
-
-// --- FULLSCREEN LOGIC ---
-const btnFullscreen = document.getElementById('btnFullscreen');
-btnFullscreen.addEventListener('click', () => {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(err => {
-      console.error('Error attempting to enable fullscreen:', err);
-    });
-  } else {
-    document.exitFullscreen();
-  }
-});
-document.addEventListener('fullscreenchange', () => {
-  if (document.fullscreenElement) {
-    document.body.classList.add('is-fullscreen');
-    document.getElementById('stage').classList.add('fullscreen-mode');
-  } else {
-      let a = document.createElement('a');
-      a.href = canvas.toDataURL(`image/${type}`);
-      a.download = filename + '.' + type;
-      a.click();
-    }
-  });
-}
-
-document.getElementById('btnPng').addEventListener('click', () => exportElem('stage', 'Dashboard_Risk', 'png'));
-document.getElementById('btnJpg').addEventListener('click', () => exportElem('stage', 'Dashboard_Risk', 'jpeg'));
-document.getElementById('btnPdf').addEventListener('click', () => exportElem('stage', 'Dashboard_Risk', 'pdf'));
-
-document.getElementById('btnDownloadTpl').addEventListener('click', () => {
-  // Minimal empty template creation logic
-  let wb = XLSX.utils.book_new();
-  let ws_data = [
-    ['Dashboard Data Template v3'],[],
-    ['Metadata','','Company',DATA.companyName,'','Project',DATA.projectName],
-    ['','','Period',DATA.period,'','Status',DATA.status],
-    [],
-    ['1. EVM Metrics'],['','Label','Value'],['','PV',280.8],['','EV',264.6],['','AC',270],['','NPV',77.6],
-    [],
-    ['2. Supply Readiness Index (SRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Salt Contract',0.82,0.2],
-    [],
-    ['3. Project Execution Index (PEI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Engineering',0.88,1],
-    [],
-    ['4. Commercial Readiness Index (CRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Offtake',0.6,1],
-    [],
-    ['5. Overall Risk Index'],['','Supply Risk Index',0.82,0.4],['','Execution Risk Index',0.75,0.4],['','Commercial Risk Index',0.55,0.2],
-    [],
-    ['6. Risk Register Counts'],['','High',5],['','Moderate to High',11],['','Moderate',18],['','Low to Moderate',4],['','Low',3],
-    [],
-    ['7. Mitigation Progress'],['','Completed',0.82],['','Overdue',0.18],['','On Track',0.76],['','Escalations',5],
-    [],
-    ['8. EWS'],['','Parameter','Threshold','Val','ThrVal','Unit','Status','Implikasi'],
-    ['','Project Progress','Min. 90%',0.88,0.9,'%','','Tunda commissioning'],
-    [],
-    ['9. Top Risk Register'],['','Kode','Deskripsi','Kategori','L','C']
-  ];
-  let ws = XLSX.utils.aoa_to_sheet(ws_data);
-  XLSX.utils.book_append_sheet(wb, ws, "Input_Bulanan");
-  
-  let ws_act_data = [
-    ['Action Tracker'],[],[],[],
-    ['No','Isu','Kategori','Keputusan','PIC','Dampak','Level']
-  ];
-  let wa = XLSX.utils.aoa_to_sheet(ws_act_data);
-  XLSX.utils.book_append_sheet(wb, wa, "Risk_Action_Tracker");
-  
-  XLSX.writeFile(wb, "Template_Dashboard_v3.xlsx");
-});
-
-// --- HISTORY LOGIC ---
-const historyModal = document.getElementById('historyModal');
-const btnHistory = document.getElementById('btnHistory');
-const btnCloseHistory = document.getElementById('btnCloseHistory');
-const historyList = document.getElementById('historyList');
-
-function renderHistoryModal() {
-  let historyRaw = localStorage.getItem('projectHealthHistoryData');
-  let history = historyRaw ? JSON.parse(historyRaw) : [];
-  
-  if (history.length === 0) {
-    historyList.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding: 20px;">Belum ada riwayat impor data.</div>';
-    return;
-  }
-  
-  historyList.innerHTML = history.map((h, i) => `
-    <div class="history-item" draggable="true" 
-         ondragstart="handleDragStart(event, ${i})" 
-         ondragover="handleDragOver(event)" 
-         ondrop="handleDrop(event, ${i})" 
-         ondragend="handleDragEnd(event)">
-      <div class="history-info" style="cursor: grab; flex: 1;">
-        <div class="history-period">Periode: ${h.period}</div>
-        <div class="history-time">Diimpor pada: ${h.timestamp}</div>
-      </div>
-      <div class="history-actions" style="display: flex; gap: 4px;">
-        ${i > 0 ? `<button class="btn" onclick="moveHistory(${i}, 'up')" style="padding: 6px; font-size: 10px;" title="Geser ke atas">▲</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▲</button>`}
-        ${i < history.length - 1 ? `<button class="btn" onclick="moveHistory(${i}, 'down')" style="padding: 6px; font-size: 10px;" title="Geser ke bawah">▼</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▼</button>`}
-        <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 10px; font-size: 11px; margin-left: 4px;">Muat</button>
-        <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 10px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-window.loadHistory = function(index) {
-  let historyRaw = localStorage.getItem('projectHealthHistoryData');
-  if (!historyRaw) return;
-  let history = JSON.parse(historyRaw);
-  if (history[index]) {
-    DATA = history[index].data;
-    localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
-    renderDashboard();
-    document.getElementById('syncNote').style.display = 'none';
-    historyModal.style.display = 'none';
-  }
-};
-
-window.deleteHistory = function(index) {
-  if (!confirm('Apakah Anda yakin ingin menghapus log versi ini?')) return;
-  let historyRaw = localStorage.getItem('projectHealthHistoryData');
-  if (!historyRaw) return;
-  let history = JSON.parse(historyRaw);
-  history.splice(index, 1);
-  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
-  renderHistoryModal();
-};
-
-window.moveHistory = function(index, direction) {
-  let historyRaw = localStorage.getItem('projectHealthHistoryData');
-  if (!historyRaw) return;
-  let history = JSON.parse(historyRaw);
-  
-  if (direction === 'up' && index > 0) {
-    let temp = history[index];
-    history[index] = history[index - 1];
-    history[index - 1] = temp;
-  } else if (direction === 'down' && index < history.length - 1) {
-    let temp = history[index];
-    history[index] = history[index + 1];
-    history[index + 1] = temp;
-  } else {
-    return;
-  }
-  
-  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
-  renderHistoryModal();
-};
-
-let draggedIndex = null;
-window.handleDragStart = function(e, index) {
-  draggedIndex = index;
-  e.dataTransfer.effectAllowed = 'move';
-  setTimeout(() => e.target.style.opacity = '0.5', 0);
-};
-window.handleDragOver = function(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-};
-window.handleDrop = function(e, targetIndex) {
-  e.preventDefault();
-  if (draggedIndex === null || draggedIndex === targetIndex) return;
-  
-  let historyRaw = localStorage.getItem('projectHealthHistoryData');
-  if (!historyRaw) return;
-  let history = JSON.parse(historyRaw);
-  
-  let item = history.splice(draggedIndex, 1)[0];
-  history.splice(targetIndex, 0, item);
-  
-  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
-  draggedIndex = null;
-  renderHistoryModal();
-};
-window.handleDragEnd = function(e) {
-  e.target.style.opacity = '1';
-  draggedIndex = null;
-};
-
-btnHistory.addEventListener('click', () => {
-  renderHistoryModal();
-  historyModal.style.display = 'flex';
-});
-
-btnCloseHistory.addEventListener('click', () => {
-  historyModal.style.display = 'none';
-});
-
-historyModal.addEventListener('click', (e) => {
-  if (e.target === historyModal) {
-    historyModal.style.display = 'none';
-  }
-});
+// --- CELL DETAIL MODAL LOGIC ---
+const cellDetailModal = document.getElementById('cellDetailModal');
+const cellDetailTitle = document.getElementById('cellDetailTitle');
+const cellDetailBody = document.getElementById('cellDetailBody');
 
 document.getElementById('btnCloseCellDetail').addEventListener('click', () => cellDetailModal.style.display = 'none');
 cellDetailModal.addEventListener('click', e => { if(e.target === cellDetailModal) cellDetailModal.style.display = 'none'; });
@@ -1546,6 +1341,7 @@ cellConfigs.forEach(cfg => {
     });
   }
 });
+
 </script>
 </body>
 </html>
