@@ -897,28 +897,47 @@ function parseWorkbook(wb) {
     let actRange = XLSX.utils.decode_range(wsAct['!ref']);
     let actions = [];
     for (let r = actRange.s.r; r <= actRange.e.r; r++) {
-      let no = getVal(wsAct, r, 1); // Col B
+      let startCol = 1; // Try Col B first
+      let testNoA = getVal(wsAct, r, 0); // Check Col A
+      if (typeof testNoA === 'number' || (typeof testNoA === 'string' && testNoA.match(/^\d+$/))) {
+        startCol = 0; // The user used the template where No is in Col A
+      }
+      
+      let no = getVal(wsAct, r, startCol);
       if (typeof no === 'number' || (typeof no === 'string' && no.match(/^\d+$/))) {
-        let isu = getVal(wsAct, r, 2) || '-';      // Col C
-        let katLvl = getVal(wsAct, r, 3) || '';    // Col D
-        let tindakan = getVal(wsAct, r, 4) || '-'; // Col E
-        let pic = getVal(wsAct, r, 5) || '-';      // Col F
-        let dampak = getVal(wsAct, r, 6) || '-';   // Col G
-        let prioritasRaw = getVal(wsAct, r, 7);    // Col H
+        let isu = getVal(wsAct, r, startCol+1) || '-';
+        let katLvl = getVal(wsAct, r, startCol+2) || '';
+        let tindakan = getVal(wsAct, r, startCol+3) || '-';
+        let pic = getVal(wsAct, r, startCol+4) || '-';
+        let dampak = getVal(wsAct, r, startCol+5) || '-';
+        let prioritasRaw = getVal(wsAct, r, startCol+6);
         
-        let katParts = katLvl.split('—');
-        let kategori = katParts[0] ? katParts[0].trim() : '-';
-        let level = katParts[1] ? katParts[1].trim() : '-';
+        let kategori = '-';
+        let level = '-';
+        
+        // If startCol is 0, they used the template: ['No','Isu','Kategori','Keputusan','PIC','Dampak','Level']
+        // where startCol+2 is Kategori, startCol+3 is Keputusan... and startCol+6 is Level!
+        if (startCol === 0) {
+          kategori = katLvl;
+          level = prioritasRaw || '-';
+          prioritasRaw = getVal(wsAct, r, startCol+7);
+        } else {
+          // Old logic where Kategori and Level are joined by dash
+          let katParts = katLvl.split('—');
+          kategori = katParts[0] ? katParts[0].trim() : '-';
+          level = katParts[1] ? katParts[1].trim() : '-';
+        }
+        
         let prio = parseInt(prioritasRaw);
         if (isNaN(prio)) prio = 999;
         
         actions.push({
-          kategori: kategori,
-          level: level,
-          isu: isu,
-          tindakan: tindakan,
-          pic: pic,
-          dampak: dampak,
+          kategori: String(kategori),
+          level: String(level),
+          isu: String(isu),
+          tindakan: String(tindakan),
+          pic: String(pic),
+          dampak: String(dampak),
           prioritas: prio
         });
       }
@@ -1284,7 +1303,10 @@ const cellConfigs = [
         <li><b>Low:</b> ${DATA.riskCounts.low} risiko</li>
       </ul>
   `},
-  { sel: '.c-mit', title: 'Mitigation & Risk Movement', render: () => `
+  { sel: '.c-mit', title: 'Mitigation & Risk Movement', render: () => {
+      let rm = DATA.riskMovement || [];
+      let getCount = (lbl) => { let obj = rm.find(x => x.label === lbl); return obj ? obj.count : 0; };
+      return `
       <p>Status upaya mitigasi dan pergerakan risiko dari periode sebelumnya.</p>
       <ul style="padding-left:20px; margin-bottom:20px;">
         <li><b>Total Mitigasi (Open & Closed):</b> ${DATA.mitigation.total}</li>
@@ -1293,22 +1315,27 @@ const cellConfigs = [
       </ul>
       <h4 style="color:var(--text-hi);">Pergerakan Risiko:</h4>
       <ul style="padding-left:20px;">
-        <li><b>Risiko Baru (New):</b> ${DATA.riskMovement.new}</li>
-        <li><b>Risiko Memburuk (Up):</b> ${DATA.riskMovement.up}</li>
-        <li><b>Risiko Stabil (Stable):</b> ${DATA.riskMovement.stable}</li>
-        <li><b>Risiko Membaik (Down):</b> ${DATA.riskMovement.down}</li>
+        <li><b>Risiko Baru (New):</b> ${getCount('Baru')}</li>
+        <li><b>Risiko Memburuk (Up):</b> ${getCount('Eskalasi')}</li>
+        <li><b>Risiko Stabil (Stable):</b> ${getCount('Terkendali')}</li>
+        <li><b>Risiko Membaik (Down):</b> ${getCount('Menurun')}</li>
       </ul>
-  `},
+      `;
+  }},
   { sel: '.panel-c', title: 'Early Warning System (EWS) Alerts', render: () => {
       let html = `<p>Sistem Peringatan Dini (EWS) memantau metrik kunci dan memberikan peringatan jika nilainya mendekati atau melewati ambang batas (threshold).</p>`;
       if (DATA.ews.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA PERINGATAN (Aman)</p>`;
-      let rows = DATA.ews.map(e => `
+      let rows = DATA.ews.map(e => {
+        let delta = (typeof e.val === 'number' && typeof e.thrVal === 'number') ? Math.abs(e.val - e.thrVal).toFixed(2) : '-';
+        let unitStr = (e.unit && e.unit.toLowerCase() !== 'hari') ? ` ${e.unit}` : '';
+        return `
         <div style="border-left:4px solid var(--orange); padding:12px; margin-top:15px; background:rgba(0,0,0,0.03); border-radius:4px;">
-          <div style="font-weight:bold; color:var(--text-hi); font-size:15px; margin-bottom:5px;">${e.parameter}</div>
-          <div>Nilai Saat Ini: <b style="color:var(--text-hi);">${e.current}</b> | Ambang Batas: <b>${e.threshold}</b></div>
-          <div style="margin-top:6px; color:var(--red); font-weight:bold;">Selisih: ${e.delta}</div>
+          <div style="font-weight:bold; color:var(--text-hi); font-size:15px; margin-bottom:5px;">${e.p}</div>
+          <div>Nilai Saat Ini: <b style="color:var(--text-hi);">${e.val}${unitStr}</b> | Ambang Batas: <b>${e.thr}${unitStr} (Target: ${e.thrVal})</b></div>
+          <div style="margin-top:6px; color:var(--red); font-weight:bold;">Selisih (Val vs Target): ${delta}</div>
+          <div style="margin-top:6px; font-size:11px; color:var(--text-mid);">Implikasi: ${e.impl || '-'}</div>
         </div>
-      `).join('');
+      `}).join('');
       return html + rows;
   }},
   { sel: '.panel-d', title: 'Executive Actions', render: () => {
