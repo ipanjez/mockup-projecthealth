@@ -375,9 +375,9 @@ let DATA = {
     { p: 'Project Progress', thr: 'Min. 80%', thrVal: 90, val: 88, unit: '%', impl: 'Keterlambatan progres berpotensi menunda tahap commissioning.' },
     { p: 'Offtaker Agreement', thr: 'SPI >= 1,00', thrVal: 70, val: 60, unit: '%', impl: 'Belum tercapainya kuota offtake minimal mengancam kelayakan finansial operasi.' }
   ],
-  actions: [
-    { no: 1, isu: 'Isu Antarmuka Lintas EPC', kat: 'Eksekusi', lvl: 'High', keput: 'Sahkan Interface Coordinator', pic: 'VP Proyek', dampak: 'Amankan COD' },
-    { no: 2, isu: 'Kapasitas Keuangan Rekind', kat: 'Finansial', lvl: 'Mod-High', keput: 'Dispensasi jaminan', pic: 'Dirut', dampak: 'Lindungi tie-in' }
+  executiveActions: [
+    { prioritas: 1, isu: 'Isu Antarmuka Lintas EPC', kategori: 'Eksekusi', level: 'High', tindakan: 'Sahkan Interface Coordinator', pic: 'VP Proyek', dampak: 'Amankan COD' },
+    { prioritas: 2, isu: 'Kapasitas Keuangan Rekind', kategori: 'Finansial', level: 'Mod-High', tindakan: 'Dispensasi jaminan', pic: 'Dirut', dampak: 'Lindungi tie-in' }
   ]
 };
 
@@ -594,13 +594,9 @@ function renderDashboard() {
 
   // Executive Actions (Priority rendering)
   let maxA = DATA.config.maxActions || 3;
-  let activeActions = DATA.actions.filter(a => a.prio > 0);
-  let topA = activeActions.slice(0, maxA);
-  
-  if (topA.length === 0) topA = DATA.actions.slice(0, maxA);
   // Render Executive Actions Text
   let eaHtml = '';
-  if (DATA.executiveActions.length === 0) {
+  if (!DATA.executiveActions || DATA.executiveActions.length === 0) {
     eaHtml = '<div style="font-size:11px; color:var(--text-dim); text-align:center; padding:10px;">Tidak ada aksi eksekutif</div>';
   } else {
     // Show top 3 for dashboard
@@ -628,7 +624,7 @@ function renderDashboard() {
     return `<tr><td><b>${r.code}</b></td><td>${r.desc}</td><td>${r.kat}</td><td>${r.L}</td><td>${r.C}</td><td>${scale}</td><td><span class="tag" style="background:${bg};color:${col}">${lvl}</span></td></tr>`;
   }).join('');
 
-  document.getElementById('actionTableDetail').innerHTML = DATA.executiveActions.map(a => `
+  document.getElementById('actionTableDetail').innerHTML = (DATA.executiveActions || []).map(a => `
     <tr><td>${a.prioritas < 999 ? a.prioritas : '-'}</td><td><b>${a.isu}</b></td><td><span class="tag" style="background:var(--navy-soft)">${a.kategori}</span><br>${a.level}</td><td>${a.tindakan}</td><td>${a.pic}</td><td>${a.dampak}</td></tr>
   `).join('');
 }
@@ -1522,7 +1518,7 @@ const cellConfigs = [
   }},
   { sel: '.panel-d', title: 'Executive Actions', render: () => {
       let html = `<p>Daftar Keputusan dan Tindakan Eksekutif (Level C-Suite / Manajemen Puncak) beserta PIC dan dampaknya.</p>`;
-      if (DATA.executiveActions.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA AKSI EKSEKUTIF</p>`;
+      if (!DATA.executiveActions || DATA.executiveActions.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA AKSI EKSEKUTIF</p>`;
       let rows = DATA.executiveActions.map(a => `
         <div style="border:1px solid var(--panel-border); border-left:4px solid var(--orange); border-radius:6px; padding:12px; margin-top:15px; background:rgba(0,0,0,0.02);">
           <div style="font-weight:bold; color:var(--text-hi); display:flex; justify-content:space-between; align-items:center;">
