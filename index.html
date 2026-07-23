@@ -1108,8 +1108,8 @@ function exportDataToExcel(dataObj, filename = "Template_Dashboard_v3.xlsx") {
     ['8. EWS'],['','Parameter','Threshold','Val','ThrVal','Unit','Status','Implikasi'],
     ...(dataObj.ews ? dataObj.ews.map(e => ['','', e.p, e.thr, e.val, e.thrVal, e.unit, e.st, e.imp]) : []),
     [],
-    ['9. Top Risk Register'],['','Kode','Deskripsi','Kategori','L','C'],
-    ...(dataObj.topRisks ? dataObj.topRisks.map(r => ['','', r.code, r.desc, r.kat, r.L, r.C]) : [])
+    ['9. Top Risk Register'],['','Kode','Deskripsi','Kategori','L','C','Skala Risiko','Level Risiko'],
+    ...(dataObj.topRisks ? dataObj.topRisks.map(r => { let scale = SCALE_LOOKUP[`${r.L}-${r.C}`]||1; return ['','', r.code, r.desc, r.kat, r.L, r.C, scale, getRiskLevelName(scale*4)]; }) : [])
   ];
   let ws = XLSX.utils.aoa_to_sheet(ws_data);
   XLSX.utils.book_append_sheet(wb, ws, "Input_Bulanan");
@@ -1376,7 +1376,7 @@ const cellConfigs = [
       <h4 style="color:var(--text-hi); margin-top:20px;">Daftar Risiko Teratas (Berdasarkan L x C):</h4>
       <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="border-bottom:1px solid var(--panel-border); text-align:left;">
-          <th>Kode</th><th>Deskripsi</th><th>L</th><th>C</th><th>Tingkat Risiko</th>
+          <th>Kode</th><th>Deskripsi</th><th>L</th><th>C</th><th>Skala Risiko</th><th>Level Risiko</th>
         </tr>
       `;
       DATA.topRisks.forEach(r => {
@@ -1384,7 +1384,7 @@ const cellConfigs = [
         let bg = getRiskScaleColor(scale);
         let col = getRiskScaleColorText(scale);
         let lvl = getRiskLevelName(scale*4);
-        html += `<tr><td><b>${r.code}</b></td><td>${r.desc}</td><td>${r.L}</td><td>${r.C}</td><td><span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; background:${bg}; color:${col};">${lvl}</span></td></tr>`;
+        html += `<tr><td><b>${r.code}</b></td><td>${r.desc}</td><td>${r.L}</td><td>${r.C}</td><td><b>${scale}</b></td><td><span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; background:${bg}; color:${col};">${lvl}</span></td></tr>`;
       });
       html += `</table>`;
       return html;
