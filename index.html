@@ -139,8 +139,11 @@ body.dark .titlebar h1 { color: #E8EDF3; }
 .st-waspada { background: var(--yellow); color: #5C4300 !important; }
 .st-aman { background: var(--green); }
 
-.panel-d { background: var(--cell-bg); color: var(--text-hi); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--panel-border); }
-.panel-d .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.panel-d { background: var(--cell-bg); color: var(--text-hi); border-radius: var(--radius); padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--panel-border); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+.cell:hover, .panel-c:hover, .panel-d:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); z-index: 10; border-color: var(--orange); }
+body.dark .cell:hover, body.dark .panel-c:hover, body.dark .panel-d:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
+
+.lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 .action-grid { display: flex; flex-direction: column; gap: 6px; }
 .action-card { background: rgba(0,0,0,0.03); border: 1px solid var(--panel-border); border-left: 4px solid var(--orange); border-radius: 6px; padding: 6px 10px; display: flex; gap: 8px; align-items: flex-start; }
 body.dark .action-card { background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-left: 4px solid var(--orange); }
@@ -303,6 +306,19 @@ td b { color: var(--text-hi); }
     </div>
     <div class="modal-body" id="historyList">
       <!-- Item riwayat akan dirender di sini -->
+    </div>
+  </div>
+</div>
+
+<!-- Cell Detail Modal -->
+<div class="modal-overlay" id="cellDetailModal">
+  <div class="modal" style="width: 800px; max-width: 95%;">
+    <div class="modal-header">
+      <h3 id="cellDetailTitle">Detail</h3>
+      <button class="modal-close" id="btnCloseCellDetail">&times;</button>
+    </div>
+    <div class="modal-body" id="cellDetailBody" style="color: var(--text-mid); line-height: 1.5; font-size: 13px;">
+      <!-- Content dynamically injected here -->
     </div>
   </div>
 </div>
@@ -1132,6 +1148,160 @@ historyModal.addEventListener('click', (e) => {
     historyModal.style.display = 'none';
   }
 });
+
+// --- CELL DETAIL MODAL LOGIC ---
+const cellDetailModal = document.getElementById('cellDetailModal');
+const cellDetailTitle = document.getElementById('cellDetailTitle');
+const cellDetailBody = document.getElementById('cellDetailBody');
+
+document.getElementById('btnCloseCellDetail').addEventListener('click', () => cellDetailModal.style.display = 'none');
+cellDetailModal.addEventListener('click', e => { if(e.target === cellDetailModal) cellDetailModal.style.display = 'none'; });
+
+function showDetailModal(title, htmlContent) {
+  cellDetailTitle.innerHTML = title;
+  cellDetailBody.innerHTML = htmlContent;
+  cellDetailModal.style.display = 'flex';
+}
+
+const cellConfigs = [
+  { sel: '.c-phs', title: 'Overall Project Health Score (PHS)', render: () => `
+      <p>PHS merupakan komposit dari 5 pilar utama dengan bobot yang dapat disesuaikan (default masing-masing 20%).</p>
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Pilar</th><th>Skor (0-100)</th><th>Bobot</th><th>Nilai Komposit</th></tr>
+        <tr><td>Financial Health (CPI)</td><td>${(Math.min(DATA.evm.ev/DATA.evm.ac, 1)*100).toFixed(2)}%</td><td>${(DATA.config.phsWeights[0]*100).toFixed(0)}%</td><td>${(Math.min(DATA.evm.ev/DATA.evm.ac, 1)*100 * DATA.config.phsWeights[0]).toFixed(2)}%</td></tr>
+        <tr><td>Schedule Health (SPI)</td><td>${(Math.min(DATA.evm.ev/DATA.evm.pv, 1)*100).toFixed(2)}%</td><td>${(DATA.config.phsWeights[1]*100).toFixed(0)}%</td><td>${(Math.min(DATA.evm.ev/DATA.evm.pv, 1)*100 * DATA.config.phsWeights[1]).toFixed(2)}%</td></tr>
+        <tr><td>Supply Readiness (SRI)</td><td>${DATA.sri.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[2]*100).toFixed(0)}%</td><td>${(DATA.sri.total * DATA.config.phsWeights[2]).toFixed(2)}%</td></tr>
+        <tr><td>Project Execution (PEI)</td><td>${DATA.pei.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[3]*100).toFixed(0)}%</td><td>${(DATA.pei.total * DATA.config.phsWeights[3]).toFixed(2)}%</td></tr>
+        <tr><td>Commercial Readiness (CRI)</td><td>${DATA.cri.total.toFixed(2)}%</td><td>${(DATA.config.phsWeights[4]*100).toFixed(0)}%</td><td>${(DATA.cri.total * DATA.config.phsWeights[4]).toFixed(2)}%</td></tr>
+        <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total PHS</td><td></td><td>100%</td><td>${DATA.phs.score.toFixed(2)}%</td></tr>
+      </table>
+  `},
+  { sel: '.c-sub', title: 'Sub-Index Readiness & Performance', render: () => {
+      let html = `<p>Rincian perhitungan Sub-Index Readiness (SRI, PEI, CRI) berdasarkan parameter dan bobot.</p>`;
+      const renderTbl = (name, items, total) => {
+        let rows = items.map(i => `<tr><td>${i[0]}</td><td>${i[1].toFixed(2)}</td><td>${(i[2]*100).toFixed(0)}%</td><td>${(i[1]*i[2]).toFixed(2)}</td></tr>`).join('');
+        return `<h4 style="margin-top:20px; color:var(--text-hi);">${name} (Total: ${total.toFixed(2)}%)</h4><table style="width:100%; border-collapse:collapse; margin-bottom:15px;"><tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Parameter</th><th>Skor</th><th>Bobot</th><th>Nilai</th></tr>${rows}</table>`;
+      };
+      html += renderTbl('Supply Readiness Index (SRI)', DATA.sri.items, DATA.sri.total);
+      html += renderTbl('Project Execution Index (PEI)', DATA.pei.items, DATA.pei.total);
+      html += renderTbl('Commercial Readiness Index (CRI)', DATA.cri.items, DATA.cri.total);
+      return html;
+  }},
+  { sel: '.c-fin', title: 'Key Financial & Schedule (EVM)', render: () => `
+      <p>Metrik Earned Value Management (EVM) digunakan untuk mengukur kinerja biaya dan jadwal proyek.</p>
+      <ul style="padding-left:20px; margin-bottom:20px;">
+        <li><b>PV (Planned Value)</b>: Anggaran yang direncanakan s.d periode ini (USD ${DATA.evm.pv} Juta)</li>
+        <li><b>EV (Earned Value)</b>: Nilai pekerjaan yang telah diselesaikan (USD ${DATA.evm.ev} Juta)</li>
+        <li><b>AC (Actual Cost)</b>: Biaya aktual yang telah dikeluarkan (USD ${DATA.evm.ac} Juta)</li>
+        <li><b>NPV (Net Present Value)</b>: Nilai sekarang dari arus kas proyek (USD ${DATA.evm.npv} Juta)</li>
+      </ul>
+      <h4 style="color:var(--text-hi);">Kinerja EVM (Rumus & Perhitungan):</h4>
+      <ul style="padding-left:20px;">
+        <li><b>CPI (Cost Performance Index)</b> = EV / AC = ${(DATA.evm.ev/DATA.evm.ac).toFixed(2)} <span style="font-size:11px; color:var(--text-dim);">(&gt;1 = Efisien)</span></li>
+        <li><b>SPI (Schedule Performance Index)</b> = EV / PV = ${(DATA.evm.ev/DATA.evm.pv).toFixed(2)} <span style="font-size:11px; color:var(--text-dim);">(&gt;1 = Mendahului Jadwal)</span></li>
+        <li><b>CV (Cost Variance)</b> = EV - AC = ${(DATA.evm.ev-DATA.evm.ac).toFixed(2)} Juta</li>
+        <li><b>SV (Schedule Variance)</b> = EV - PV = ${(DATA.evm.ev-DATA.evm.pv).toFixed(2)} Juta</li>
+      </ul>
+  `},
+  { sel: '.c-curve', title: 'EVM Performance Curve', render: () => `
+      <p>Visualisasi batang untuk PV, EV, AC, dan NPV. Membantu membandingkan kinerja jadwal (EV vs PV) dan kinerja biaya (EV vs AC) secara langsung.</p>
+      <table style="width:100%; border-collapse:collapse; text-align:left; margin-top:15px;">
+        <tr style="border-bottom:1px solid var(--panel-border);"><th>Metrik</th><th>Nilai (USD Juta)</th></tr>
+        <tr><td>Planned Value (PV)</td><td>${DATA.evm.pv}</td></tr>
+        <tr><td>Earned Value (EV)</td><td>${DATA.evm.ev}</td></tr>
+        <tr><td>Actual Cost (AC)</td><td>${DATA.evm.ac}</td></tr>
+        <tr><td>Net Present Value (NPV)</td><td>${DATA.evm.npv}</td></tr>
+      </table>
+  `},
+  { sel: '.c-lvl', title: 'Overall Risk Level', render: () => `
+      <p>Skor Risiko Komposit dihitung berdasarkan pembobotan dari Risiko Pasokan, Eksekusi, dan Komersial.</p>
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Komponen Risiko</th><th>Skor</th><th>Bobot</th><th>Nilai Komposit</th></tr>
+        <tr><td>Supply Risk</td><td>${DATA.riskIndex.supply.toFixed(2)}</td><td>${(DATA.config.riskWeights[0]*100).toFixed(0)}%</td><td>${(DATA.riskIndex.supply * DATA.config.riskWeights[0]).toFixed(2)}</td></tr>
+        <tr><td>Execution Risk</td><td>${DATA.riskIndex.execution.toFixed(2)}</td><td>${(DATA.config.riskWeights[1]*100).toFixed(0)}%</td><td>${(DATA.riskIndex.execution * DATA.config.riskWeights[1]).toFixed(2)}</td></tr>
+        <tr><td>Commercial Risk</td><td>${DATA.riskIndex.commercial.toFixed(2)}</td><td>${(DATA.config.riskWeights[2]*100).toFixed(0)}%</td><td>${(DATA.riskIndex.commercial * DATA.config.riskWeights[2]).toFixed(2)}</td></tr>
+        <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total Skor Risiko</td><td></td><td>100%</td><td>${DATA.riskIndex.total.toFixed(2)}</td></tr>
+      </table>
+  `},
+  { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => `
+      <p>Sebaran risiko berdasarkan Matriks L x C (Likelihood x Consequence).</p>
+      <p>Warna mewakili tingkat keparahan risiko:</p>
+      <ul style="padding-left:20px; margin-bottom:15px;">
+        <li><b style="color:var(--green);">Hijau (Rendah / Low)</b></li>
+        <li><b style="color:var(--yellow);">Kuning (Sedang / Moderate)</b></li>
+        <li><b style="color:var(--orange);">Oranye (Moderate to High)</b></li>
+        <li><b style="color:var(--red);">Merah (Tinggi / High)</b></li>
+      </ul>
+      <p>Angka di dalam kotak menunjukkan jumlah risiko (Risk Register) yang berada pada tingkat tersebut. Silakan merujuk pada tabel <b>Risk Register Details</b> di bagian bawah dashboard untuk rincian setiap risiko secara spesifik.</p>
+  `},
+  { sel: '.c-cnt', title: 'Risk Register Counts', render: () => `
+      <p>Rekapitulasi jumlah risiko berdasarkan level ekstremitasnya.</p>
+      <ul style="padding-left:20px;">
+        <li><b>High (Extreme):</b> ${DATA.riskCounts.high} risiko</li>
+        <li><b>Moderate to High:</b> ${DATA.riskCounts.moderateToHigh} risiko</li>
+        <li><b>Moderate:</b> ${DATA.riskCounts.moderate} risiko</li>
+        <li><b>Low to Moderate:</b> ${DATA.riskCounts.lowToModerate} risiko</li>
+        <li><b>Low:</b> ${DATA.riskCounts.low} risiko</li>
+      </ul>
+  `},
+  { sel: '.c-mit', title: 'Mitigation & Risk Movement', render: () => `
+      <p>Status upaya mitigasi dan pergerakan risiko dari periode sebelumnya.</p>
+      <ul style="padding-left:20px; margin-bottom:20px;">
+        <li><b>Total Mitigasi (Open & Closed):</b> ${DATA.mitigation.total}</li>
+        <li><b>Mitigasi Selesai (Closed):</b> ${DATA.mitigation.closed} (${DATA.mitigation.total>0 ? ((DATA.mitigation.closed/DATA.mitigation.total)*100).toFixed(0) : 0}%)</li>
+        <li><b>Eskalasi:</b> ${DATA.mitigation.escalations} butir</li>
+      </ul>
+      <h4 style="color:var(--text-hi);">Pergerakan Risiko:</h4>
+      <ul style="padding-left:20px;">
+        <li><b>Risiko Baru (New):</b> ${DATA.riskMovement.new}</li>
+        <li><b>Risiko Memburuk (Up):</b> ${DATA.riskMovement.up}</li>
+        <li><b>Risiko Stabil (Stable):</b> ${DATA.riskMovement.stable}</li>
+        <li><b>Risiko Membaik (Down):</b> ${DATA.riskMovement.down}</li>
+      </ul>
+  `},
+  { sel: '.panel-c', title: 'Early Warning System (EWS) Alerts', render: () => {
+      let html = `<p>Sistem Peringatan Dini (EWS) memantau metrik kunci dan memberikan peringatan jika nilainya mendekati atau melewati ambang batas (threshold).</p>`;
+      if (DATA.ews.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA PERINGATAN (Aman)</p>`;
+      let rows = DATA.ews.map(e => `
+        <div style="border-left:4px solid var(--orange); padding:12px; margin-top:15px; background:rgba(0,0,0,0.03); border-radius:4px;">
+          <div style="font-weight:bold; color:var(--text-hi); font-size:15px; margin-bottom:5px;">${e.parameter}</div>
+          <div>Nilai Saat Ini: <b style="color:var(--text-hi);">${e.current}</b> | Ambang Batas: <b>${e.threshold}</b></div>
+          <div style="margin-top:6px; color:var(--red); font-weight:bold;">Selisih: ${e.delta}</div>
+        </div>
+      `).join('');
+      return html + rows;
+  }},
+  { sel: '.panel-d', title: 'Executive Actions', render: () => {
+      let html = `<p>Daftar Keputusan dan Tindakan Eksekutif (Level C-Suite / Manajemen Puncak) beserta PIC dan dampaknya.</p>`;
+      if (DATA.executiveActions.length === 0) return html + `<p style="text-align:center; padding:20px; font-weight:bold;">TIDAK ADA AKSI EKSEKUTIF</p>`;
+      let rows = DATA.executiveActions.map(a => `
+        <div style="border:1px solid var(--panel-border); border-left:4px solid var(--orange); border-radius:6px; padding:12px; margin-top:15px; background:rgba(0,0,0,0.02);">
+          <div style="font-weight:bold; color:var(--text-hi); display:flex; justify-content:space-between; align-items:center;">
+            <span>Kategori: ${a.kategori}</span>
+            <span style="font-size:11px; padding:3px 8px; background:var(--orange); color:#fff; border-radius:4px;">Level: ${a.level}</span>
+          </div>
+          <div style="margin:10px 0;"><b>Isu:</b> <span style="color:var(--text-hi);">${a.isu}</span></div>
+          <div style="margin:10px 0; padding:10px; background:var(--stage-bg); border-radius:4px;"><b>Tindakan/Keputusan:</b><br/>${a.tindakan}</div>
+          <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:20px; color:var(--text-hi);">
+            <span><b>PIC:</b> ${a.pic}</span>
+            <span><b>Dampak:</b> ${a.dampak}</span>
+          </div>
+        </div>
+      `).join('');
+      return html + rows;
+  }}
+];
+
+// Attach listeners
+cellConfigs.forEach(cfg => {
+  let el = document.querySelector(cfg.sel);
+  if (el) {
+    el.addEventListener('click', () => {
+      showDetailModal(cfg.title, cfg.render());
+    });
+  }
+});
+
 </script>
 </body>
 </html>
