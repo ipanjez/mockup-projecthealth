@@ -1415,6 +1415,17 @@ const cellConfigs = [
         <tr><td>Commercial Risk</td><td>${DATA.riskIndex.commercial.toFixed(2)}</td><td>${(DATA.config.riskWeights[2]*100).toFixed(0)}%</td><td>${(DATA.riskIndex.commercial * DATA.config.riskWeights[2]).toFixed(2)}</td></tr>
         <tr style="border-top:2px solid var(--panel-border); font-weight:bold; color:var(--text-hi);"><td>Total Skor Risiko</td><td></td><td>100%</td><td>${DATA.riskIndex.total.toFixed(2)}</td></tr>
       </table>
+
+      <div style="margin-top: 20px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Kriteria Penentuan Level Risiko (Berdasarkan Skor)</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse;">
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0; width:120px;">0.00 – 20.00</td><td style="font-weight:bold; color:#538135; width:130px;">Low</td><td style="color:var(--text-dim);">Risiko sangat terkendali.</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">20.01 – 40.00</td><td style="font-weight:bold; color:#A9D18E;">Low to Moderate</td><td style="color:var(--text-dim);">Terkendali, butuh pemantauan rutin.</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">40.01 – 60.00</td><td style="font-weight:bold; color:#FFD966;">Moderate</td><td style="color:var(--text-dim);">Perlu tindakan mitigasi terencana.</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">60.01 – 80.00</td><td style="font-weight:bold; color:#F4B183;">Moderate to High</td><td style="color:var(--text-dim);">Beresiko, butuh intervensi manajemen.</td></tr>
+          <tr><td style="padding:6px 0;">80.01 – 100.00</td><td style="font-weight:bold; color:#E06666;">High</td><td style="color:var(--text-dim);">Risiko kritis, butuh aksi eksekutif segera.</td></tr>
+        </table>
+      </div>
   `},
   { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => {
       let html = `
