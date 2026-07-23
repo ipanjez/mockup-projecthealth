@@ -165,6 +165,21 @@ td b { color: var(--text-hi); }
   .panel-a, .panel-b { grid-template-columns: 1fr; grid-template-areas: "phs" "sub" "fin" "curve"; }
   .panel-b { grid-template-areas: "lvl" "heat" "cnt" "mit"; }
 }
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: var(--stage-bg); width: 600px; max-width: 90%; border-radius: 12px; border: 1px solid var(--panel-border); box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { margin: 0; font-size: 16px; color: var(--text-hi); }
+.modal-close { cursor: pointer; background: none; border: none; font-size: 18px; color: var(--text-dim); }
+.modal-close:hover { color: var(--red); }
+.modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; }
+.history-item { padding: 12px; border: 1px solid var(--cell-border); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: var(--cell-bg); }
+.history-item:last-child { margin-bottom: 0; }
+.history-info { display: flex; flex-direction: column; gap: 4px; }
+.history-period { font-size: 14px; font-weight: bold; color: var(--text-hi); }
+.history-time { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
+.history-actions { display: flex; gap: 8px; }
+
 @media print {
   body { background: #fff; padding: 0; }
   .toolbar { display: none; }
@@ -180,6 +195,7 @@ td b { color: var(--text-hi); }
   <div id="importStatus"></div>
   <div class="btnrow">
     <button class="btn" id="btnToggleDark">🌙 Dark Mode</button>
+    <button class="btn" id="btnHistory">🕒 Riwayat</button>
     <button class="btn" id="btnDownloadTpl">⭳ Unduh Template</button>
     <button class="btn upload" id="btnImport">⭱ Muat Data Excel</button>
     <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
@@ -274,6 +290,19 @@ td b { color: var(--text-hi); }
       <thead><tr><th>No</th><th>Isu / Risiko</th><th>Kategori</th><th>Keputusan / Tindakan</th><th>PIC</th><th>Dampak</th></tr></thead>
       <tbody></tbody>
     </table>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Riwayat Impor Data</h3>
+      <button class="modal-close" id="btnCloseHistory">&times;</button>
+    </div>
+    <div class="modal-body" id="historyList">
+      <!-- Item riwayat akan dirender di sini -->
+    </div>
   </div>
 </div>
 
@@ -609,6 +638,20 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
       let wb = XLSX.read(data, {type:'array', cellDates:true});
       parseWorkbook(wb);
       localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
+      
+      // Save to history array
+      let historyRaw = localStorage.getItem('projectHealthHistoryData');
+      let history = historyRaw ? JSON.parse(historyRaw) : [];
+      let ts = new Date().toLocaleString('id-ID');
+      history.unshift({
+        timestamp: ts,
+        period: DATA.period || 'Unknown',
+        data: JSON.parse(JSON.stringify(DATA))
+      });
+      // Limit history to 20 to avoid exceeding localStorage limit
+      if (history.length > 20) history = history.slice(0, 20);
+      localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
+
       renderDashboard();
       setStatus('<span style="color:var(--green)">✅ Berhasil</span>');
       let syncNote = document.getElementById('syncNote');
@@ -933,6 +976,72 @@ document.getElementById('btnDownloadTpl').addEventListener('click', () => {
   XLSX.utils.book_append_sheet(wb, wa, "Risk_Action_Tracker");
   
   XLSX.writeFile(wb, "Template_Dashboard_v3.xlsx");
+});
+
+// --- HISTORY LOGIC ---
+const historyModal = document.getElementById('historyModal');
+const btnHistory = document.getElementById('btnHistory');
+const btnCloseHistory = document.getElementById('btnCloseHistory');
+const historyList = document.getElementById('historyList');
+
+function renderHistoryModal() {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  let history = historyRaw ? JSON.parse(historyRaw) : [];
+  
+  if (history.length === 0) {
+    historyList.innerHTML = '<div style="text-align:center; color:var(--text-dim); padding: 20px;">Belum ada riwayat impor data.</div>';
+    return;
+  }
+  
+  historyList.innerHTML = history.map((h, i) => `
+    <div class="history-item">
+      <div class="history-info">
+        <div class="history-period">Periode: ${h.period}</div>
+        <div class="history-time">Diimpor pada: ${h.timestamp}</div>
+      </div>
+      <div class="history-actions">
+        <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 12px; font-size: 11px;">Muat Data</button>
+        <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 12px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.loadHistory = function(index) {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  if (!historyRaw) return;
+  let history = JSON.parse(historyRaw);
+  if (history[index]) {
+    DATA = history[index].data;
+    localStorage.setItem('projectHealthDashboardData', JSON.stringify(DATA));
+    renderDashboard();
+    document.getElementById('syncNote').style.display = 'none';
+    historyModal.style.display = 'none';
+  }
+};
+
+window.deleteHistory = function(index) {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  if (!historyRaw) return;
+  let history = JSON.parse(historyRaw);
+  history.splice(index, 1);
+  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
+  renderHistoryModal();
+};
+
+btnHistory.addEventListener('click', () => {
+  renderHistoryModal();
+  historyModal.style.display = 'flex';
+});
+
+btnCloseHistory.addEventListener('click', () => {
+  historyModal.style.display = 'none';
+});
+
+historyModal.addEventListener('click', (e) => {
+  if (e.target === historyModal) {
+    historyModal.style.display = 'none';
+  }
 });
 </script>
 </body>
