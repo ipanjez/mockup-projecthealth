@@ -223,15 +223,6 @@ body.dark .sheet-tab { background: rgba(255,255,255,0.05); }
   border-bottom: 2px solid var(--cell-bg);
   margin-bottom: -1px;
 }
-.sheet-content {
-  display: none;
-  flex: 1;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-}
-.sheet-content.active { display: flex; }
-
 /* Fullscreen Mode */
 #stage.fullscreen-mode {
   position: fixed; top: 50%; left: 50%; z-index: 9999;
@@ -250,6 +241,7 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
   <div id="importStatus"></div>
   <div class="btnrow">
     <button class="btn" id="btnToggleDark">🌙 Dark Mode</button>
+    <button class="btn" id="btnHistory">🕒 Riwayat</button>
     <button class="btn" id="btnDownloadTpl">⭳ Unduh Template</button>
     <button class="btn upload" id="btnImport">⭱ Muat Data Excel</button>
     <input type="file" id="fileInput" accept=".xlsx" style="display:none;">
@@ -261,8 +253,6 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
 </div>
 
 <div class="stage" id="stage">
-  <!-- DASHBOARD TAB -->
-  <div class="sheet-content active" id="tab-dashboard">
   <div class="titlebar">
     <div>
       <div class="eyebrow" id="eyebrowText">Company Name · Project Name</div>
@@ -329,21 +319,6 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
     <div class="lbl">EXECUTIVE ACTIONS</div>
     <div class="txt" id="execActionsText"></div>
   </div>
-  </div>
-
-  <!-- HISTORY TAB -->
-  <div class="sheet-content" id="tab-history">
-    <div class="titlebar">
-      <div>
-        <div class="eyebrow" id="eyebrowTextHist">Company Name · Project Name</div>
-        <h1>RIWAYAT IMPOR DATA</h1>
-        <div class="sub">Daftar log data yang pernah dimuat ke dalam dasbor.</div>
-      </div>
-    </div>
-    <div id="historyList" style="flex:1; overflow-y:auto; background:var(--panel-bg); padding:16px; border-radius:var(--radius); border:1px solid var(--panel-border);">
-      <!-- Item riwayat dirender di sini -->
-    </div>
-  </div>
 
   <!-- TABS -->
   <div class="sheet-tabs">
@@ -393,6 +368,20 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
         </ol>
       </div>
       
+    </div>
+  </div>
+</div>
+
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Riwayat Impor Data</h3>
+      <button class="modal-close" id="btnCloseHistory">&times;</button>
+    </div>
+    <div class="modal-body" id="historyList">
+      <!-- Item riwayat akan dirender di sini -->
     </div>
   </div>
 </div>
@@ -710,6 +699,7 @@ function renderDashboard() {
   
   document.getElementById('execActionsText').innerHTML = eaHtml;
 
+  renderSheetTabs();
 }
 
 // --- IMPORT LOGIC ---
