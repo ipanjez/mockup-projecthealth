@@ -706,9 +706,12 @@ function parseWorkbook(wb) {
   DATA.companyName = getVal(ws,3,3) || DATA.companyName;
   DATA.projectName = getVal(ws,3,6) || DATA.projectName;
   let rawPeriod = getVal(ws,4,3);
+  const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   if (rawPeriod instanceof Date) {
-    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     DATA.period = `${months[rawPeriod.getMonth()]} ${rawPeriod.getFullYear()}`;
+  } else if (typeof rawPeriod === 'number') {
+    let d = XLSX.SSF.parse_date_code(rawPeriod);
+    DATA.period = `${months[d.m-1]} ${d.y}`;
   } else {
     DATA.period = rawPeriod || DATA.period;
   }
@@ -726,11 +729,20 @@ function parseWorkbook(wb) {
 
   // 1. EVM
   if (sections[1] !== undefined) {
-    let r = sections[1]+2;
-    DATA.evm.pv = getVal(ws, r, 3) || 0;
-    DATA.evm.ev = getVal(ws, r+1, 3) || 0;
-    DATA.evm.ac = getVal(ws, r+2, 3) || 0;
-    DATA.evm.npv = getVal(ws, r+3, 3) || 0;
+    let r = sections[1] + 1;
+    while (r <= range.e.r) {
+      let lbl = getVal(ws, r, 2);
+      if (lbl && typeof lbl === 'string' && lbl.match(/^\d+\.\s/)) break; // stop at next section
+      if (lbl && typeof lbl === 'string') {
+        let l = lbl.toLowerCase();
+        let val = getVal(ws, r, 3) || 0;
+        if (l.includes('(pv)') || l === 'pv') DATA.evm.pv = val;
+        else if (l.includes('(ev)') || l === 'ev') DATA.evm.ev = val;
+        else if (l.includes('(ac)') || l === 'ac') DATA.evm.ac = val;
+        else if (l.includes('(npv)') || l === 'npv') DATA.evm.npv = val;
+      }
+      r++;
+    }
   }
   
   function readDynamicSection(secId) {
