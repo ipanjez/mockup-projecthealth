@@ -1460,7 +1460,16 @@ const cellConfigs = [
         <tr><td>Net Present Value (NPV)</td><td>${DATA.evm.npv}</td></tr>
       </table>
   `},
-  { sel: '.c-lvl', title: 'Overall Risk Level', render: () => `
+  { sel: '.c-lvl', title: 'Overall Risk Level', render: () => {
+      let t = DATA.riskIndex.total;
+      let r1 = t <= 20 ? 'background: rgba(255,255,255,0.1);' : '';
+      let r2 = t > 20 && t <= 40 ? 'background: rgba(255,255,255,0.1);' : '';
+      let r3 = t > 40 && t <= 60 ? 'background: rgba(255,255,255,0.1);' : '';
+      let r4 = t > 60 && t <= 80 ? 'background: rgba(255,255,255,0.1);' : '';
+      let r5 = t > 80 ? 'background: rgba(255,255,255,0.1);' : '';
+      let marker = '<span style="margin-left: 8px; background: var(--orange); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;">← Posisi Saat Ini</span>';
+
+      return `
       <p>Skor Risiko Komposit dihitung berdasarkan pembobotan dari Risiko Pasokan, Eksekusi, dan Komersial.</p>
       <table style="width:100%; border-collapse:collapse; margin-top:10px;">
         <tr style="border-bottom:1px solid var(--panel-border); text-align:left;"><th>Komponen Risiko</th><th>Skor</th><th>Bobot</th><th>Nilai Komposit</th></tr>
@@ -1473,14 +1482,15 @@ const cellConfigs = [
       <div style="margin-top: 20px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px;">
         <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Kriteria Penentuan Level Risiko (Berdasarkan Skor)</div>
         <table style="width:100%; font-size:12px; border-collapse:collapse;">
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0; width:120px;">0.00 – 20.00</td><td style="font-weight:bold; color:#538135; width:130px;">Low</td><td style="color:var(--text-dim);">Risiko sangat terkendali.</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">20.01 – 40.00</td><td style="font-weight:bold; color:#A9D18E;">Low to Moderate</td><td style="color:var(--text-dim);">Terkendali, butuh pemantauan rutin.</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">40.01 – 60.00</td><td style="font-weight:bold; color:#FFD966;">Moderate</td><td style="color:var(--text-dim);">Perlu tindakan mitigasi terencana.</td></tr>
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05);"><td style="padding:6px 0;">60.01 – 80.00</td><td style="font-weight:bold; color:#F4B183;">Moderate to High</td><td style="color:var(--text-dim);">Beresiko, butuh intervensi manajemen.</td></tr>
-          <tr><td style="padding:6px 0;">80.01 – 100.00</td><td style="font-weight:bold; color:#E06666;">High</td><td style="color:var(--text-dim);">Risiko kritis, butuh aksi eksekutif segera.</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r1}"><td style="padding:6px 8px; width:120px;">0.00 – 20.00</td><td style="font-weight:bold; color:#538135; width:130px;">Low</td><td style="color:var(--text-dim);">Risiko sangat terkendali. ${t <= 20 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r2}"><td style="padding:6px 8px;">20.01 – 40.00</td><td style="font-weight:bold; color:#A9D18E;">Low to Moderate</td><td style="color:var(--text-dim);">Terkendali, butuh pemantauan rutin. ${t > 20 && t <= 40 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r3}"><td style="padding:6px 8px;">40.01 – 60.00</td><td style="font-weight:bold; color:#FFD966;">Moderate</td><td style="color:var(--text-dim);">Perlu tindakan mitigasi terencana. ${t > 40 && t <= 60 ? marker : ''}</td></tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.05); ${r4}"><td style="padding:6px 8px;">60.01 – 80.00</td><td style="font-weight:bold; color:#F4B183;">Moderate to High</td><td style="color:var(--text-dim);">Beresiko, butuh intervensi manajemen. ${t > 60 && t <= 80 ? marker : ''}</td></tr>
+          <tr style="${r5}"><td style="padding:6px 8px;">80.01 – 100.00</td><td style="font-weight:bold; color:#E06666;">High</td><td style="color:var(--text-dim);">Risiko kritis, butuh aksi eksekutif segera. ${t > 80 ? marker : ''}</td></tr>
         </table>
       </div>
-  `},
+      `;
+  }},
   { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => {
       let html = `
       <p>Sebaran risiko berdasarkan Matriks L x C (Likelihood x Consequence).</p>
