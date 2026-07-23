@@ -1057,32 +1057,49 @@ document.getElementById('btnPng').addEventListener('click', () => exportElem('st
 document.getElementById('btnJpg').addEventListener('click', () => exportElem('stage', 'Dashboard_Risk', 'jpeg'));
 document.getElementById('btnPdf').addEventListener('click', () => exportElem('stage', 'Dashboard_Risk', 'pdf'));
 
-document.getElementById('btnDownloadTpl').addEventListener('click', () => {
-  // Minimal empty template creation logic
+function exportDataToExcel(dataObj, filename = "Template_Dashboard_v3.xlsx") {
   let wb = XLSX.utils.book_new();
+  
   let ws_data = [
     ['Dashboard Data Template v3'],[],
-    ['Metadata','','Company',DATA.companyName,'','Project',DATA.projectName],
-    ['','','Period',DATA.period,'','Status',DATA.status],
+    ['Metadata','','Company',dataObj.companyName,'','Project',dataObj.projectName],
+    ['','','Period',dataObj.period,'','Status',dataObj.status],
     [],
-    ['1. EVM Metrics'],['','Label','Value'],['','PV',280.8],['','EV',264.6],['','AC',270],['','NPV',77.6],
+    ['1. EVM Metrics'],['','Label','Value'],
+    ['','PV',dataObj.evm.pv],['','EV',dataObj.evm.ev],['','AC',dataObj.evm.ac],['','NPV',dataObj.evm.npv],
     [],
-    ['2. Supply Readiness Index (SRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Salt Contract',0.82,0.2],
+    ['2. Supply Readiness Index (SRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],
+    ...(dataObj.sri ? dataObj.sri.items.map(i => ['','', i[0], i[1]/100, i[2]]) : []),
     [],
-    ['3. Project Execution Index (PEI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Engineering',0.88,1],
+    ['3. Project Execution Index (PEI)'],['','Parameter','Score (0-1)','Weight (0-1)'],
+    ...(dataObj.pei ? dataObj.pei.items.map(i => ['','', i[0], i[1]/100, i[2]]) : []),
     [],
-    ['4. Commercial Readiness Index (CRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],['','Offtake',0.6,1],
+    ['4. Commercial Readiness Index (CRI)'],['','Parameter','Score (0-1)','Weight (0-1)'],
+    ...(dataObj.cri ? dataObj.cri.items.map(i => ['','', i[0], i[1]/100, i[2]]) : []),
     [],
-    ['5. Overall Risk Index'],['','Supply Risk Index',0.82,0.4],['','Execution Risk Index',0.75,0.4],['','Commercial Risk Index',0.55,0.2],
+    ['5. Overall Risk Index'],
+    ['','Supply Risk Index', dataObj.riskIndex ? dataObj.riskIndex.supply : 0, dataObj.config.riskWeights[0]],
+    ['','Execution Risk Index', dataObj.riskIndex ? dataObj.riskIndex.execution : 0, dataObj.config.riskWeights[1]],
+    ['','Commercial Risk Index', dataObj.riskIndex ? dataObj.riskIndex.commercial : 0, dataObj.config.riskWeights[2]],
     [],
-    ['6. Risk Register Counts'],['','High',5],['','Moderate to High',11],['','Moderate',18],['','Low to Moderate',4],['','Low',3],
+    ['6. Risk Register Counts'],
+    ['','High',dataObj.riskCounts ? dataObj.riskCounts.high : 0],
+    ['','Moderate to High',dataObj.riskCounts ? dataObj.riskCounts.moderateToHigh : 0],
+    ['','Moderate',dataObj.riskCounts ? dataObj.riskCounts.moderate : 0],
+    ['','Low to Moderate',dataObj.riskCounts ? dataObj.riskCounts.lowToModerate : 0],
+    ['','Low',dataObj.riskCounts ? dataObj.riskCounts.low : 0],
     [],
-    ['7. Mitigation Progress'],['','Completed',0.82],['','Overdue',0.18],['','On Track',0.76],['','Escalations',5],
+    ['7. Mitigation Progress'],
+    ['','Completed',dataObj.mitigation ? dataObj.mitigation.completed : 0],
+    ['','Overdue',dataObj.mitigation ? dataObj.mitigation.overdue : 0],
+    ['','On Track',dataObj.mitigation ? dataObj.mitigation.onTrack : 0],
+    ['','Escalations',dataObj.mitigation ? dataObj.mitigation.escalations : 0],
     [],
     ['8. EWS'],['','Parameter','Threshold','Val','ThrVal','Unit','Status','Implikasi'],
-    ['','Project Progress','Min. 90%',0.88,0.9,'%','','Tunda commissioning'],
+    ...(dataObj.ews ? dataObj.ews.map(e => ['','', e.p, e.thr, e.val, e.thrVal, e.unit, e.st, e.imp]) : []),
     [],
-    ['9. Top Risk Register'],['','Kode','Deskripsi','Kategori','L','C']
+    ['9. Top Risk Register'],['','Kode','Deskripsi','Kategori','L','C'],
+    ...(dataObj.topRisks ? dataObj.topRisks.map(r => ['','', r.code, r.desc, r.kat, r.L, r.C]) : [])
   ];
   let ws = XLSX.utils.aoa_to_sheet(ws_data);
   XLSX.utils.book_append_sheet(wb, ws, "Input_Bulanan");
@@ -1091,11 +1108,28 @@ document.getElementById('btnDownloadTpl').addEventListener('click', () => {
     ['Action Tracker'],[],[],[],
     ['No','Isu','Kategori','Keputusan','PIC','Dampak','Level']
   ];
+  if (dataObj.executiveActions && dataObj.executiveActions.length > 0) {
+    dataObj.executiveActions.forEach((a, idx) => {
+      ws_act_data.push([idx+1, a.isu, a.kategori, a.tindakan, a.pic, a.dampak, a.level]);
+    });
+  }
   let wa = XLSX.utils.aoa_to_sheet(ws_act_data);
   XLSX.utils.book_append_sheet(wb, wa, "Risk_Action_Tracker");
   
-  XLSX.writeFile(wb, "Template_Dashboard_v3.xlsx");
+  XLSX.writeFile(wb, filename);
+}
+
+document.getElementById('btnDownloadTpl').addEventListener('click', () => {
+  exportDataToExcel(DATA, "Template_Dashboard_v3.xlsx");
 });
+
+function downloadHistoryExcel(index) {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  let history = historyRaw ? JSON.parse(historyRaw) : [];
+  let item = history[index];
+  if (!item || !item.data) return;
+  exportDataToExcel(item.data, "Data_Impor_" + item.period.replace(/\\s/g, "_") + ".xlsx");
+}
 
 // --- HISTORY LOGIC ---
 const historyModal = document.getElementById('historyModal');
@@ -1125,6 +1159,7 @@ function renderHistoryModal() {
       <div class="history-actions" style="display: flex; gap: 4px;">
         ${i > 0 ? `<button class="btn" onclick="moveHistory(${i}, 'up')" style="padding: 6px; font-size: 10px;" title="Geser ke atas">▲</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▲</button>`}
         ${i < history.length - 1 ? `<button class="btn" onclick="moveHistory(${i}, 'down')" style="padding: 6px; font-size: 10px;" title="Geser ke bawah">▼</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▼</button>`}
+        <button class="btn" onclick="downloadHistoryExcel(${i})" style="padding: 6px 10px; font-size: 11px;" title="Unduh Excel Data Ini">⭳</button>
         <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 10px; font-size: 11px; margin-left: 4px;">Muat</button>
         <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 10px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
       </div>
