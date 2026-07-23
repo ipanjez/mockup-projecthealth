@@ -1025,14 +1025,20 @@ function renderHistoryModal() {
   }
   
   historyList.innerHTML = history.map((h, i) => `
-    <div class="history-item">
-      <div class="history-info">
+    <div class="history-item" draggable="true" 
+         ondragstart="handleDragStart(event, ${i})" 
+         ondragover="handleDragOver(event)" 
+         ondrop="handleDrop(event, ${i})" 
+         ondragend="handleDragEnd(event)">
+      <div class="history-info" style="cursor: grab; flex: 1;">
         <div class="history-period">Periode: ${h.period}</div>
         <div class="history-time">Diimpor pada: ${h.timestamp}</div>
       </div>
-      <div class="history-actions">
-        <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 12px; font-size: 11px;">Muat Data</button>
-        <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 12px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
+      <div class="history-actions" style="display: flex; gap: 4px;">
+        ${i > 0 ? `<button class="btn" onclick="moveHistory(${i}, 'up')" style="padding: 6px; font-size: 10px;" title="Geser ke atas">▲</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▲</button>`}
+        ${i < history.length - 1 ? `<button class="btn" onclick="moveHistory(${i}, 'down')" style="padding: 6px; font-size: 10px;" title="Geser ke bawah">▼</button>` : `<button class="btn" style="padding: 6px; font-size: 10px; visibility: hidden;">▼</button>`}
+        <button class="btn primary" onclick="loadHistory(${i})" style="padding: 6px 10px; font-size: 11px; margin-left: 4px;">Muat</button>
+        <button class="btn" onclick="deleteHistory(${i})" style="padding: 6px 10px; font-size: 11px; color: var(--red); border-color: var(--red);">Hapus</button>
       </div>
     </div>
   `).join('');
@@ -1059,6 +1065,57 @@ window.deleteHistory = function(index) {
   history.splice(index, 1);
   localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
   renderHistoryModal();
+};
+
+window.moveHistory = function(index, direction) {
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  if (!historyRaw) return;
+  let history = JSON.parse(historyRaw);
+  
+  if (direction === 'up' && index > 0) {
+    let temp = history[index];
+    history[index] = history[index - 1];
+    history[index - 1] = temp;
+  } else if (direction === 'down' && index < history.length - 1) {
+    let temp = history[index];
+    history[index] = history[index + 1];
+    history[index + 1] = temp;
+  } else {
+    return;
+  }
+  
+  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
+  renderHistoryModal();
+};
+
+let draggedIndex = null;
+window.handleDragStart = function(e, index) {
+  draggedIndex = index;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.target.style.opacity = '0.5', 0);
+};
+window.handleDragOver = function(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+};
+window.handleDrop = function(e, targetIndex) {
+  e.preventDefault();
+  if (draggedIndex === null || draggedIndex === targetIndex) return;
+  
+  let historyRaw = localStorage.getItem('projectHealthHistoryData');
+  if (!historyRaw) return;
+  let history = JSON.parse(historyRaw);
+  
+  let item = history.splice(draggedIndex, 1)[0];
+  history.splice(targetIndex, 0, item);
+  
+  localStorage.setItem('projectHealthHistoryData', JSON.stringify(history));
+  draggedIndex = null;
+  renderHistoryModal();
+};
+window.handleDragEnd = function(e) {
+  e.target.style.opacity = '1';
+  draggedIndex = null;
 };
 
 btnHistory.addEventListener('click', () => {
