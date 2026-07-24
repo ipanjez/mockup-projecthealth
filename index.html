@@ -1679,17 +1679,54 @@ const cellConfigs = [
       
       return html;
   }},
-  { sel: '.c-fin', title: 'Key Financial & Schedule (EVM)', render: () => `
+  { sel: '.c-fin', title: 'Key Financial & Schedule (EVM)', render: () => {
+      let R = DATA.config.rag;
+      let ev = DATA.evm;
+      let marker = '<span style="font-size:9px; padding:2px 4px; background:var(--text-hi); color:var(--app-bg); border-radius:3px; margin-left:6px; font-weight:bold;">POSISI SAAT INI</span>';
+      
+      // Determine CPI active row
+      let cg = ev.cpi >= R.cpiG ? 'background: rgba(128,128,128,0.15);' : '';
+      let cy = ev.cpi >= R.cpiY && ev.cpi < R.cpiG ? 'background: rgba(128,128,128,0.15);' : '';
+      let co = ev.cpi >= R.cpiO && ev.cpi < R.cpiY ? 'background: rgba(128,128,128,0.15);' : '';
+      let cr = ev.cpi < R.cpiO ? 'background: rgba(128,128,128,0.15);' : '';
+
+      // Determine SPI active row
+      let sg = ev.spi >= R.spiG ? 'background: rgba(128,128,128,0.15);' : '';
+      let sy = ev.spi >= R.spiY && ev.spi < R.spiG ? 'background: rgba(128,128,128,0.15);' : '';
+      let so = ev.spi >= R.spiO && ev.spi < R.spiY ? 'background: rgba(128,128,128,0.15);' : '';
+      let sr = ev.spi < R.spiO ? 'background: rgba(128,128,128,0.15);' : '';
+
+      return `
       <p>Metrik Earned Value Management (EVM) digunakan untuk mengukur kinerja biaya dan jadwal proyek.</p>
       
-      <div style="margin-top: 15px; margin-bottom: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
-        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Panduan Warna Indikator</div>
-        <table style="width:100%; font-size:12px; border-collapse:collapse;">
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; width:70px; font-weight:bold; color:var(--green);">Hijau</td><td style="color:var(--text-dim);">Kinerja sangat baik (Sesuai/melebihi target batas atas). Untuk selisih biaya (CV) dan waktu (SV) bernilai positif (+).</td></tr>
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; font-weight:bold; color:var(--yellow);">Kuning</td><td style="color:var(--text-dim);">Kinerja waspada (Masih masuk dalam batas toleransi target).</td></tr>
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:2px 5px; font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Kinerja buruk (Di bawah batas toleransi). Untuk selisih (CV/SV) bernilai negatif (-).</td></tr>
-          <tr><td style="padding:2px 5px; font-weight:bold; color:var(--navy);">Hitam/Biru</td><td style="color:var(--text-dim);">Nilai referensi atau baseline (seperti Net Present Value).</td></tr>
+      <div style="margin-top: 15px; margin-bottom: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px; overflow-x:auto;">
+        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Batas Toleransi (Threshold) CPI & SPI</div>
+        <table style="width:100%; font-size:12px; border-collapse:collapse; text-align:left; min-width:500px;">
+          <tr style="border-bottom:1px solid var(--panel-border);">
+            <th style="padding:6px; color:var(--text-dim);">Indikator</th>
+            <th style="padding:6px; color:var(--green);">Aman / Hijau</th>
+            <th style="padding:6px; color:var(--yellow);">Perhatian / Kuning</th>
+            <th style="padding:6px; color:var(--orange);">Waspada / Oranye</th>
+            <th style="padding:6px; color:var(--red);">Kritis / Merah</th>
+          </tr>
+          <tr style="border-bottom:1px solid var(--panel-border);">
+            <td style="padding:6px; font-weight:bold;">CPI (Biaya)</td>
+            <td style="padding:6px; ${cg}">>= ${R.cpiG.toFixed(2)} ${cg ? marker : ''}</td>
+            <td style="padding:6px; ${cy}">${R.cpiY.toFixed(2)} – ${(R.cpiG - 0.01).toFixed(2)} ${cy ? marker : ''}</td>
+            <td style="padding:6px; ${co}">${R.cpiO.toFixed(2)} – ${(R.cpiY - 0.01).toFixed(2)} ${co ? marker : ''}</td>
+            <td style="padding:6px; ${cr}">< ${R.cpiO.toFixed(2)} ${cr ? marker : ''}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px; font-weight:bold;">SPI (Jadwal)</td>
+            <td style="padding:6px; ${sg}">>= ${R.spiG.toFixed(2)} ${sg ? marker : ''}</td>
+            <td style="padding:6px; ${sy}">${R.spiY.toFixed(2)} – ${(R.spiG - 0.01).toFixed(2)} ${sy ? marker : ''}</td>
+            <td style="padding:6px; ${so}">${R.spiO.toFixed(2)} – ${(R.spiY - 0.01).toFixed(2)} ${so ? marker : ''}</td>
+            <td style="padding:6px; ${sr}">< ${R.spiO.toFixed(2)} ${sr ? marker : ''}</td>
+          </tr>
         </table>
+        <div style="font-size:11px; color:var(--text-dim); margin-top:10px;">
+          * Untuk <b>CV</b> dan <b>SV</b>: Hijau jika >= 0 (Surplus/Mendahului), Merah jika < 0 (Defisit/Terlambat).
+        </div>
       </div>
 
       <ul style="padding-left:20px; margin-bottom:20px;">
@@ -1705,7 +1742,8 @@ const cellConfigs = [
         <li><b>CV (Cost Variance)</b> = EV - AC = ${(DATA.evm.ev-DATA.evm.ac).toFixed(2)} Juta</li>
         <li><b>SV (Schedule Variance)</b> = EV - PV = ${(DATA.evm.ev-DATA.evm.pv).toFixed(2)} Juta</li>
       </ul>
-  `},
+      `
+  }},
   { sel: '.c-curve', title: 'EVM Performance Curve', render: () => `
       <p>Visualisasi batang untuk PV, EV, AC, dan NPV. Membantu membandingkan kinerja jadwal (EV vs PV) dan kinerja biaya (EV vs AC) secara langsung.</p>
       <table style="width:100%; border-collapse:collapse; text-align:left; margin-top:15px;">
@@ -1715,16 +1753,6 @@ const cellConfigs = [
         <tr><td>Actual Cost (AC)</td><td>${DATA.evm.ac}</td></tr>
         <tr><td>Net Present Value (NPV)</td><td>${DATA.evm.npv}</td></tr>
       </table>
-      
-      <div style="margin-top: 20px; padding: 12px; background: var(--cell-bg); border-radius: 8px;">
-        <div style="font-weight: bold; margin-bottom: 8px; color: var(--text-hi); font-size: 13px;">Indikator Warna EVM</div>
-        <table style="width:100%; font-size:12px; border-collapse:collapse;">
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px; width:160px;">CPI & SPI >= 1.00</td><td style="font-weight:bold; color:var(--green); width:80px;">Hijau</td><td style="color:var(--text-dim);">Efisiensi / Sesuai Rencana</td></tr>
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px;">CPI & SPI < 1.00</td><td style="font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Overbudget / Terlambat</td></tr>
-          <tr style="border-bottom:1px solid var(--panel-border);"><td style="padding:6px 8px;">CV & SV >= 0</td><td style="font-weight:bold; color:var(--green);">Hijau</td><td style="color:var(--text-dim);">Surplus (Positif)</td></tr>
-          <tr><td style="padding:6px 8px;">CV & SV < 0</td><td style="font-weight:bold; color:var(--red);">Merah</td><td style="color:var(--text-dim);">Defisit (Negatif)</td></tr>
-        </table>
-      </div>
   `},
   { sel: '.c-lvl', title: 'Overall Risk Level', render: () => {
       let t = DATA.riskIndex.total;
