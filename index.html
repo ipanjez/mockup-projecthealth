@@ -743,14 +743,15 @@ function renderDashboard() {
     eaHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 11px; color: var(--text-hi); padding: 4px 0;">' + 
       DATA.executiveActions.slice(0, DATA.config.maxActions).map(a => `
       <span style="display: inline-flex; align-items: center;">
-        <span style="background: var(--orange); color: #fff; padding: 2px 5px; border-radius: 4px; font-family: \'IBM Plex Mono\', monospace; font-weight: 800; font-size: 9px; margin-right: 6px;">#${a.prioritas < 999 ? a.prioritas : '-'}</span>
-        <b style="color: var(--navy); margin-right: 6px;">${a.kategori}</b> 
-        <span style="color: var(--text-hi); opacity: 0.9;">${a.isu}</span>
+        <span style="background: var(--orange); color: #fff; padding: 2px 5px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-weight: 800; font-size: 9px; margin-right: 6px;">#${a.prioritas < 999 ? a.prioritas : '-'}</span>
+        <b style="color: var(--navy); margin-right: 6px;" data-censor>${a.kategori}</b> 
+        <span style="color: var(--text-hi); opacity: 0.9;" data-censor>${a.isu}</span>
       </span>
     `).join('') + '</div>';
   }
   
   document.getElementById('execActionsText').innerHTML = eaHtml;
+  if (_censorMode) applyCensor(true);
 
   renderSheetTabs();
 }
@@ -1575,6 +1576,21 @@ function showDetailModal(title, htmlContent) {
   cellDetailTitle.innerHTML = title;
   cellDetailBody.innerHTML = htmlContent;
   cellDetailModal.style.display = 'flex';
+  // Apply censor to modal if censor mode is active
+  if (_censorMode) applyCensorModal();
+}
+
+function applyCensorModal() {
+  cellDetailBody.querySelectorAll('[data-censor]').forEach(el => {
+    if (!el.dataset.orig) el.dataset.orig = el.textContent;
+    let len = el.textContent.trim().length;
+    el.textContent = 'X'.repeat(Math.max(2, Math.min(len, 6)));
+  });
+  // Censor spans that show sensitive text not tagged (Executive Actions)
+  cellDetailBody.querySelectorAll('.ea-censor').forEach(el => {
+    if (!el.dataset.orig) el.dataset.orig = el.innerHTML;
+    el.innerHTML = '<span style="letter-spacing:2px;">XXXXXX</span>';
+  });
 }
 
 const cellConfigs = [
@@ -2029,14 +2045,14 @@ const cellConfigs = [
       let rows = concernActions.map((a, i) => `
         <div style="border:1px solid var(--panel-border); border-left:4px solid var(--orange); border-radius:6px; padding:12px; margin-top:15px; background:var(--cell-bg); position:relative;">
           <div style="font-weight:bold; color:var(--text-hi); display:flex; justify-content:space-between; align-items:center;">
-            <span>Kategori: ${a.kategori} ${a.prioritas < 999 ? `<span style="font-size:11px; font-weight:normal; color:var(--text-dim); margin-left:8px;">(#${a.prioritas})</span>` : ''}</span>
-            <span style="font-size:11px; padding:3px 8px; background:var(--orange); color:#fff; border-radius:4px;">Level: ${a.level}</span>
+            <span>Kategori: <span class="ea-censor">${a.kategori}</span> ${a.prioritas < 999 ? `<span style="font-size:11px; font-weight:normal; color:var(--text-dim); margin-left:8px;">(#${a.prioritas})</span>` : ''}</span>
+            <span style="font-size:11px; padding:3px 8px; background:var(--orange); color:#fff; border-radius:4px;">Level: <span class="ea-censor">${a.level}</span></span>
           </div>
-          <div style="margin:10px 0;"><b>Isu:</b> <span style="color:var(--text-hi);">${a.isu}</span></div>
-          <div style="margin:10px 0; padding:10px; background:var(--stage-bg); border-radius:4px; border:1px solid var(--panel-border);"><b>Tindakan/Keputusan:</b><br/>${a.tindakan}</div>
+          <div style="margin:10px 0;"><b>Isu:</b> <span class="ea-censor" style="color:var(--text-hi);">${a.isu}</span></div>
+          <div style="margin:10px 0; padding:10px; background:var(--stage-bg); border-radius:4px; border:1px solid var(--panel-border);"><b>Tindakan/Keputusan:</b><br/><span class="ea-censor">${a.tindakan}</span></div>
           <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:20px; color:var(--text-hi);">
-            <span><b>PIC:</b> ${a.pic}</span>
-            <span><b>Dampak:</b> ${a.dampak}</span>
+            <span><b>PIC:</b> <span class="ea-censor">${a.pic}</span></span>
+            <span><b>Dampak:</b> <span class="ea-censor">${a.dampak}</span></span>
           </div>
         </div>
       `).join('');
