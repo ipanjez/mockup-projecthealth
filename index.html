@@ -233,6 +233,21 @@ body.dark .sheet-tab { background: var(--panel-border); }
 }
 body.is-fullscreen { overflow: hidden; background: #000; }
 body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
+
+/* Censor / Confidentiality Mode */
+body.censored #eyebrowText,
+body.censored #periodLine,
+body.censored .gauge-num,
+body.censored #riskScoreText,
+body.censored .v,
+body.censored .p,
+body.censored .a,
+body.censored .hm-cell span,
+body.censored .mit-bar .val {
+  filter: blur(5px);
+  opacity: 0.8;
+  user-select: none;
+}
 </style>
 </head>
 <body>
@@ -249,6 +264,7 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
     <button class="btn" id="btnPng">⭳ PNG</button>
     <button class="btn" id="btnJpg">⭳ JPG</button>
     <button class="btn primary" id="btnPdf">⭳ Export PDF</button>
+    <button class="btn" id="btnCensor" title="Sembunyikan/Tampilkan Data (Confidential)">👁️ Sensor</button>
     <button class="btn" id="btnFullscreen" title="Full Screen">🖵</button>
   </div>
 </div>
@@ -293,7 +309,7 @@ body.is-fullscreen .toolbar, body.is-fullscreen .detail { display: none; }
         <div class="gauge-label" id="riskScoreText">Skor Komposit: 0.00</div>
       </div>
       <div class="cell c-heat">
-        <div class="cell-title">Risk Profile Heat Map (L x C)</div>
+        <div class="cell-title">Top Risk Profile Heat Map (L x C)</div>
         <div class="heatmap" id="heatmap"></div>
         <div class="heat-axes"><span>1</span><span>2</span><span>3</span><span>4</span><span>Consequence 5</span></div>
       </div>
@@ -1294,6 +1310,12 @@ function exportDataToExcel(dataObj, filename = "Template_Dashboard_v3.xlsx") {
   XLSX.writeFile(wb, filename);
 }
 
+document.getElementById('btnCensor').addEventListener('click', function() {
+  document.body.classList.toggle('censored');
+  let isCensored = document.body.classList.contains('censored');
+  this.innerHTML = isCensored ? '👁️‍🗨️ Tampilkan' : '👁️ Sensor';
+});
+
 document.getElementById('btnDownloadTpl').addEventListener('click', () => {
   let a = document.createElement('a');
   a.href = 'Template_Dashboard_v3.xlsx';
@@ -1785,7 +1807,7 @@ const cellConfigs = [
       </div>
       `;
   }},
-  { sel: '.c-heat', title: 'Risk Profile Heat Map', render: () => {
+  { sel: '.c-heat', title: 'Top Risk Profile Heat Map', render: () => {
       let Lc = DATA.config.likelihood;
       let Cc = DATA.config.consequence;
       let RL = DATA.config.riskLevels;
